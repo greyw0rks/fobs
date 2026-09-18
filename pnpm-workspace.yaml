@@ -1,0 +1,14 @@
+packages:
+  - "apps/*"
+
+# pnpm 10+ blocks postinstall scripts by default. These all need theirs to
+# fetch/compile native binaries; without them Prisma and Next fail at runtime.
+allowBuilds:
+  '@prisma/client': true
+  '@prisma/engines': true
+  bigint-buffer: true
+  bufferutil: true
+  esbuild: true
+  prisma: true
+  unrs-resolver: true
+  utf-8-validate: true

@@ -1,0 +1,31 @@
+# dependencies
+node_modules/
+
+# next
+.next/
+out/
+next-env.d.ts
+
+# rust / anchor
+target/
+.anchor/
+test-ledger/
+
+# local secrets and config
+.env
+.env.local
+
+# Cached devnet artifacts. usdc-mint.json is a real secret key (the test USDC
+# mint authority) and the test-user wallets under here are real keypairs.
+.devnet/
+keys/
+
+# generated Prisma dev schema — `pnpm db:dev` recreates it from schema.prisma
+apps/web/prisma/schema.dev.prisma
+
+# local sqlite database
+apps/web/prisma/*.db
+apps/web/prisma/*.db-journal
+
+# os
+.DS_Store

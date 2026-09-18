@@ -1,0 +1,470 @@
+:root {
+  --bg: #f6f7f4;
+  --panel: #ffffff;
+  --ink: #111313;
+  --muted: #66706c;
+  --line: #dfe5dc;
+  --soft: #edf1ea;
+  --green: #18a058;
+  --green-dark: #0b7d41;
+  --red: #d84c40;
+  --gold: #f0a100;
+  --blue: #236bfe;
+  --shadow: 0 18px 50px rgba(22, 31, 26, 0.1);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: linear-gradient(180deg, #fbfcf8 0%, var(--bg) 42%, #eef2ed 100%);
+  color: var(--ink);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  border: 0;
+  cursor: pointer;
+}
+
+.shell {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr);
+}
+
+.sidebar {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  border-right: 1px solid var(--line);
+  padding: 24px 18px;
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(18px);
+}
+
+.brand {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 26px;
+}
+
+.mark {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  color: white;
+  font-weight: 900;
+  background: linear-gradient(135deg, var(--ink), var(--green) 70%, var(--gold));
+}
+
+.brand h1 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.brand p,
+.muted {
+  color: var(--muted);
+}
+
+.brand p {
+  margin: 1px 0 0;
+  font-size: 12px;
+}
+
+.nav {
+  display: grid;
+  gap: 8px;
+}
+
+.nav a,
+.button,
+.secondary,
+.danger {
+  min-height: 40px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-weight: 750;
+}
+
+.nav a {
+  justify-content: flex-start;
+  padding: 0 12px;
+  color: var(--muted);
+}
+
+.nav a:hover,
+.nav a.active {
+  background: var(--ink);
+  color: white;
+}
+
+.main {
+  padding: 26px;
+}
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+.topbar h2 {
+  margin: 0;
+  font-size: 32px;
+  line-height: 1.08;
+}
+
+.topbar p {
+  margin: 8px 0 0;
+  color: var(--muted);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) 360px;
+  gap: 18px;
+  align-items: start;
+}
+
+.feed,
+.stack {
+  display: grid;
+  gap: 12px;
+}
+
+.card,
+.panel {
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+}
+
+.card {
+  padding: 16px;
+}
+
+.panel {
+  padding: 16px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  color: white;
+  font-weight: 850;
+  background: linear-gradient(135deg, var(--blue), var(--green));
+}
+
+.chip,
+.synthetic {
+  display: inline-flex;
+  align-items: center;
+  height: 26px;
+  padding: 0 9px;
+  border: 1px solid var(--line);
+  background: var(--soft);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.trade-title {
+  font-size: 24px;
+  margin: 14px 0 4px;
+}
+
+.button {
+  padding: 0 14px;
+  color: white;
+  background: var(--green);
+}
+
+.button:hover {
+  background: var(--green-dark);
+}
+
+.secondary {
+  padding: 0 14px;
+  background: white;
+  border: 1px solid var(--line);
+}
+
+.danger {
+  padding: 0 14px;
+  color: white;
+  background: var(--red);
+}
+
+.fomo {
+  background: #f7c948;
+  color: var(--ink);
+}
+
+.asset-list {
+  display: grid;
+  gap: 8px;
+}
+
+.asset-row,
+.holding-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: white;
+}
+
+.price-up {
+  color: var(--green-dark);
+  font-weight: 800;
+}
+
+.price-down {
+  color: var(--red);
+  font-weight: 800;
+}
+
+/* Unrealized P&L. Never applied to a figure whose price was not read — the
+   caller renders "price not read" instead, because a made-up gain is worse
+   than no gain. */
+.gain {
+  color: var(--green-dark);
+  font-weight: 800;
+}
+
+.loss {
+  color: var(--red);
+  font-weight: 800;
+}
+
+.chart {
+  margin: 0;
+}
+
+.chart figcaption {
+  margin-top: 10px;
+  font-size: 13px;
+}
+
+.chart-grid {
+  stroke: var(--line);
+  stroke-width: 1;
+  stroke-dasharray: 4 4;
+}
+
+.chart-line {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.chart-dot {
+  stroke: white;
+  stroke-width: 1.5;
+}
+
+.chart-dot.buy {
+  fill: var(--green);
+}
+
+.chart-dot.sell {
+  fill: var(--red);
+}
+
+/* The wallet panel is a definition list; browsers indent `dd` 40px by default,
+   which reads as a broken layout rather than a quotation. */
+dt,
+dd {
+  margin: 0;
+}
+
+dt {
+  font-size: 12px;
+}
+
+dd {
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 8px;
+}
+
+.trade-panel {
+  display: grid;
+  gap: 12px;
+}
+
+.segmented {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  padding: 4px;
+  background: var(--soft);
+  border-radius: 8px;
+}
+
+.segmented button {
+  height: 36px;
+  border-radius: 6px;
+  background: transparent;
+  font-weight: 800;
+  color: var(--muted);
+}
+
+.segmented button.active.buy {
+  background: var(--green);
+  color: white;
+}
+
+.segmented button.active.sell {
+  background: var(--red);
+  color: white;
+}
+
+.input {
+  height: 50px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0 14px;
+  font-size: 20px;
+  font-weight: 850;
+}
+
+.quote {
+  padding: 12px;
+  border-radius: 8px;
+  background: var(--soft);
+  display: grid;
+  gap: 8px;
+}
+
+.disclosure {
+  border-left: 4px solid var(--gold);
+  padding: 12px;
+  border-radius: 8px;
+  background: #fff9e8;
+  color: #594308;
+}
+
+.allocation {
+  display: flex;
+  overflow: hidden;
+  border-radius: 999px;
+  height: 18px;
+  background: var(--soft);
+  margin: 14px 0;
+}
+
+/* The percentage widths are the whole point of the bar, so the slices must not
+   be shrunk to fit. */
+.allocation span {
+  flex: none;
+  display: block;
+}
+
+@media (max-width: 960px) {
+  .shell {
+    display: block;
+  }
+
+  .sidebar {
+    position: static;
+    height: auto;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .nav {
+    grid-auto-flow: column;
+    overflow-x: auto;
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Feed view switcher: Following | For You | Stocks */
+.tabs {
+  display: flex;
+  gap: 6px;
+  margin: 0 0 18px;
+  padding: 5px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  width: fit-content;
+}
+
+.tab {
+  padding: 9px 20px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--muted);
+  text-decoration: none;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.tab:hover {
+  color: var(--ink);
+  background: var(--soft);
+}
+
+.tab.active {
+  background: var(--ink);
+  color: #ffffff;
+}
+
+@media (max-width: 960px) {
+  .tabs {
+    width: 100%;
+    overflow-x: auto;
+  }
+}
+

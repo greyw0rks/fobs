@@ -1,0 +1,28 @@
+[toolchain]
+
+[features]
+resolution = true
+skip-lint = false
+
+# Same program id on every cluster: it comes from target/deploy/fomo-keypair.json,
+# which `anchor keys sync` propagates into declare_id! and this file.
+[programs.localnet]
+fomo = "Fomo9DbW4wbTRSz9eU82Tp1HH27LQJPUYZzcZoSKonxL"
+
+[programs.devnet]
+fomo = "Fomo9DbW4wbTRSz9eU82Tp1HH27LQJPUYZzcZoSKonxL"
+
+[registry]
+url = "https://api.apr.dev"
+
+[provider]
+# Localnet so `anchor test` runs against a throwaway validator with no SOL
+# needed. Deploy to devnet explicitly:
+#   anchor deploy --provider.cluster devnet
+cluster = "Localnet"
+wallet = "~/.config/solana/id.json"
+
+[scripts]
+# Was `pnpm anchor:test`, and package.json's `anchor:test` ran `anchor test` —
+# each script invoked the other forever. Run the test runner directly instead.
+test = "pnpm exec ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"

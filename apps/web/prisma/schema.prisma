@@ -1,0 +1,234 @@
+// FOBS data model.
+//
+// Postgres is the social brain: identity, follows, feed, notifications. None of
+// this belongs onchain. Solana holds only what must be verifiable — assets,
+// vaults, holdings, and trade receipts.
+//
+// The direction of authority matters and is the point of this schema:
+//
+//   Solana  →  indexer  →  these tables  →  feed API  →  UI
+//
+// A trade row is a *cache of something that happened on chain*, written only by
+// the indexer. Nothing in the app writes a Trade from user input. If these
+// tables and the chain ever disagree, the chain is right and the indexer is
+// behind — so every onchain-backed row carries the onchain identity that lets
+// it be re-derived and corrected (`Asset.onchainId`, `Trade.onchainReceipt`).
+//
+// PortfolioFollow is deliberately absent. Portfolio-FOMO is not the product;
+// the P0 loop is a single trade FOMO'd by a single person at their own size.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum TradeSide {
+  buy
+  sell
+}
+
+enum PriceFeedType {
+  pyth
+  mock
+}
+
+/// Why a notification exists. The message text is NOT stored — it is rendered
+/// from the type plus the actor and asset it points at, so wording changes do
+/// not require a migration and a notification can never disagree with the trade
+/// it describes.
+enum NotificationType {
+  FRIEND_TRADE
+  FOLLOW
+  FOMO
+  TRADE_CONFIRMED
+}
+
+model User {
+  id            String    @id @default(cuid())
+  xUserId       String?   @unique
+  username      String    @unique
+  displayName   String
+  avatar        String?
+  /// Null until onboarding connects a wallet. A user exists from the moment X
+  /// authenticates them, which is before they have a wallet.
+  walletAddress String?   @unique
+  /// The user's devnet keypair, sealed with AES-256-GCM (`lib/server/custody.ts`).
+  ///
+  /// This is the one column in the schema holding a secret, and it exists only
+  /// because this is a devnet test environment: the alternative — a browser
+  /// wallet adapter — is what a product holding anything of value must use.
+  /// Sealed rather than plaintext so that a database dump is not also a set of
+  /// signing keys, and never returned by any query that leaves the server.
+  walletSecret  String?
+  /// Seeded test accounts (alice, bob, charlie, grey). Their keys are held by
+  /// the server so the /dev harness can sign real devnet trades as them. Never
+  /// true for a user who arrived through authentication.
+  isTestUser    Boolean   @default(false)
+  onboardedAt   DateTime?
+  createdAt     DateTime  @default(now())
+
+  trades        Trade[]
+  holdings      Holding[]
+  following     Follow[]         @relation("follower")
+  followers     Follow[]         @relation("following")
+  notifications Notification[]   @relation("recipient")
+  actorIn       Notification[]   @relation("actor")
+  sessions      Session[]
+}
+
+model Session {
+  /// The value stored in the httpOnly cookie. Opaque and random; the row is the
+  /// authority, so a session can be revoked by deleting it.
+  id        String   @id
+  userId    String
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model Asset {
+  id            String        @id @default(cuid())
+  symbol        String        @unique
+  name          String
+  /// The asset's id in the program. Every PDA for this asset derives from it:
+  /// asset = [b"asset", u16le(onchainId)], and vault/mint/oracle from the asset
+  /// key. Storing it is what lets the app rebuild any address without guessing.
+  onchainId     Int           @unique
+  /// The Asset account itself, `[b"asset", u16le(onchainId)]`. This is what a
+  /// TradeReceipt stores in its `asset` field, so it is the join key between a
+  /// receipt read off the chain and the row here. Every other address below is
+  /// derived from this one.
+  assetAddress  String        @unique
+  mintAddress   String        @unique
+  vaultAddress  String        @unique
+  oracleAddress String?
+  /// How many of this asset's trades the indexer has already ingested. Lives
+  /// here rather than in a separate cursor table so it advances in the same
+  /// transaction as the trades it accounts for — a crash mid-ingest cannot
+  /// leave the cursor ahead of the rows.
+  indexedTrades Int           @default(0)
+  /// Which source is live right now. All five assets are `mock` on devnet
+  /// because no Pyth US-equity feed is published there (verified 2026-09-18).
+  priceFeedType PriceFeedType
+  /// Verified Pyth feed id, stored even when priceFeedType is `mock` so the
+  /// mainnet switch is config, not a migration. See docs/PYTH_VERIFICATION.md.
+  pythFeedId    String?
+  /// Last price the indexer read from the chain, in USD. A cache, never an
+  /// input: the program prices trades from the oracle account, not from here.
+  cachedPrice   Decimal?      @db.Decimal(20, 6)
+  decimals      Int           @default(6)
+  createdAt     DateTime      @default(now())
+
+  trades        Trade[]
+  holdings      Holding[]
+  notifications Notification[]
+}
+
+model Trade {
+  id            String    @id @default(cuid())
+  userId        String
+  assetId       String
+  side          TradeSide
+  amountUsdc    Decimal   @db.Decimal(20, 6)
+  quantity      Decimal   @db.Decimal(20, 6)
+  price         Decimal   @db.Decimal(20, 6)
+  /// The receipt PDA. This is the onchain identity of the trade and the
+  /// idempotency key for indexing: re-reading the same receipt upserts the same
+  /// row rather than duplicating it.
+  onchainReceipt String   @unique
+  /// Resolved by looking up the transaction that created the receipt account.
+  /// Nullable because that lookup can fail independently of the trade existing.
+  txSignature   String?   @unique
+  /// Timestamp from the receipt account, not from when we noticed it.
+  tradedAt      DateTime
+  /// The trade this one was inspired by. Provenance only — no copying. Mirrors
+  /// `source_receipt` on the onchain receipt.
+  sourceTradeId String?
+  createdAt     DateTime  @default(now())
+
+  user          User      @relation(fields: [userId], references: [id])
+  asset         Asset     @relation(fields: [assetId], references: [id])
+  sourceTrade   Trade?    @relation("tradeFomo", fields: [sourceTradeId], references: [id])
+  fomoChildren  Trade[]   @relation("tradeFomo")
+  notifications Notification[]
+
+  @@index([createdAt])
+  @@index([assetId, createdAt])
+  /// The feed query: trades by the people you follow, newest first.
+  @@index([userId, createdAt])
+}
+
+/// A cache of the program's own `Holding` PDA, not a computed ledger.
+///
+/// The indexer reads the onchain account and mirrors it here — it never
+/// accumulates this from the trade history. The program maintains `quantity` and
+/// a volume-weighted `avg_price` and is the authority for both; re-deriving them
+/// in TypeScript would be a second implementation of the program's arithmetic
+/// and the first thing to drift. If this table and the chain disagree, the chain
+/// is right and the next indexer pass fixes it.
+///
+/// A row with `quantity` 0 is a real answer: a holder who has fully exited still
+/// has an onchain account, and the program keeps it.
+model Holding {
+  userId    String
+  assetId   String
+  quantity  Decimal  @db.Decimal(20, 6)
+  /// Volume-weighted average entry, USDC per share. Mirrors `Holding.avg_price`.
+  avgPrice  Decimal  @db.Decimal(20, 6)
+  updatedAt DateTime @updatedAt
+
+  user      User  @relation(fields: [userId], references: [id])
+  asset     Asset @relation(fields: [assetId], references: [id])
+
+  @@id([userId, assetId])
+  /// The portfolio query reads one user's holdings; the holder count reads one
+  /// asset's.
+  @@index([assetId])
+}
+
+model Follow {
+  followerId  String
+  followingId String
+  createdAt   DateTime @default(now())
+
+  follower    User @relation("follower", fields: [followerId], references: [id])
+  following   User @relation("following", fields: [followingId], references: [id])
+
+  @@id([followerId, followingId])
+  @@index([followerId])
+  @@index([followingId])
+}
+
+/// Deliberately no FomoAction table. A FOMO is fully described by the trade it
+/// produced: that trade carries `sourceTradeId`, and the onchain receipt carries
+/// `source_receipt`. A third record of the same fact would be one more thing to
+/// keep in sync, and the first thing to drift.
+model Notification {
+  id          String           @id @default(cuid())
+  /// Who receives it.
+  userId      String
+  type        NotificationType
+  /// Who caused it. Null for system-originated notifications.
+  actorUserId String?
+  tradeId     String?
+  assetId     String?
+  readAt      DateTime?
+  createdAt   DateTime         @default(now())
+
+  user        User             @relation("recipient", fields: [userId], references: [id], onDelete: Cascade)
+  actor       User?            @relation("actor", fields: [actorUserId], references: [id])
+  trade       Trade?           @relation(fields: [tradeId], references: [id], onDelete: Cascade)
+  asset       Asset?           @relation(fields: [assetId], references: [id])
+
+  /// The unread-count badge and the notification centre both hit this.
+  @@index([userId, createdAt])
+  @@index([userId, readAt])
+}

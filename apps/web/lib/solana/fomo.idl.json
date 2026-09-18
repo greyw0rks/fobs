@@ -1,0 +1,1202 @@
+{
+  "address": "Fomo9DbW4wbTRSz9eU82Tp1HH27LQJPUYZzcZoSKonxL",
+  "metadata": {
+    "name": "fomo",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "FOBS synthetic social stock market program"
+  },
+  "docs": [
+    "FOBS: the social stock market for Solana.",
+    "",
+    "Four instructions carry the product:",
+    "initialize     - one-time global config",
+    "register_asset - create the asset, its mint, and its vault",
+    "fund_vault     - seed a vault's USDC reserve so sells can settle",
+    "trade          - buy or sell, emitting a TradeReceipt",
+    "",
+    "`set_mock_price` is oracle administration, not part of the trading loop.",
+    "Portfolio-FOMO is deliberately absent; the P0 product is trade-FOMO."
+  ],
+  "instructions": [
+    {
+      "name": "initialize",
+      "discriminator": [
+        175,
+        175,
+        109,
+        31,
+        13,
+        152,
+        155,
+        237
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "protocol",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  116,
+                  111,
+                  99,
+                  111,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "InitializeArgs"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "register_asset",
+      "discriminator": [
+        21,
+        80,
+        155,
+        149,
+        117,
+        207,
+        235,
+        16
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "protocol"
+          ]
+        },
+        {
+          "name": "protocol",
+          "docs": [
+            "`mut` is load-bearing: the handler advances `asset_count` below, and",
+            "Anchor only writes an `Account` back on exit when it is writable. Without",
+            "it the increment is silently dropped, the next registration reuses id 0,",
+            "and it fails with `ConstraintSeeds` on `asset` rather than anything that",
+            "points here."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  116,
+                  111,
+                  99,
+                  111,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "asset",
+          "docs": [
+            "Asset id comes from the protocol counter, so ids are sequential and",
+            "cannot collide."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  115,
+                  115,
+                  101,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "protocol.asset_count",
+                "account": "Protocol"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "docs": [
+            "Owns the USDC reserve and is the mint authority for `mint`."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "asset"
+              }
+            ]
+          }
+        },
+        {
+          "name": "mint",
+          "docs": [
+            "The synthetic share mint. Created here rather than in a setup script so",
+            "the program — not an off-chain keypair — controls issuance."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  105,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "asset"
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "RegisterAssetArgs"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "fund_vault",
+      "discriminator": [
+        26,
+        33,
+        207,
+        242,
+        119,
+        108,
+        134,
+        73
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "protocol"
+          ]
+        },
+        {
+          "name": "protocol",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  116,
+                  111,
+                  99,
+                  111,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vault.asset",
+                "account": "AssetVault"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault_usdc",
+          "docs": [
+            "The reserve token account, owned (authority) by the vault PDA."
+          ],
+          "writable": true
+        },
+        {
+          "name": "admin_usdc",
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "set_mock_price",
+      "discriminator": [
+        161,
+        22,
+        71,
+        90,
+        159,
+        254,
+        26,
+        48
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "protocol"
+          ]
+        },
+        {
+          "name": "protocol",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  116,
+                  111,
+                  99,
+                  111,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "asset"
+        },
+        {
+          "name": "mock_oracle",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  111,
+                  99,
+                  107,
+                  95,
+                  111,
+                  114,
+                  97,
+                  99,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "asset"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "price",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "trade",
+      "discriminator": [
+        178,
+        144,
+        26,
+        216,
+        241,
+        187,
+        206,
+        130
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "protocol",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  116,
+                  111,
+                  99,
+                  111,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "asset",
+          "docs": [
+            "Mutable because the receipt PDA is derived from `trade_count`, which",
+            "advances once per trade."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  115,
+                  115,
+                  101,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "asset.id",
+                "account": "Asset"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "asset"
+              }
+            ]
+          }
+        },
+        {
+          "name": "mint",
+          "docs": [
+            "The synthetic share mint, authority = vault PDA."
+          ],
+          "writable": true
+        },
+        {
+          "name": "vault_usdc",
+          "docs": [
+            "Reserve token account, authority = vault PDA."
+          ],
+          "writable": true
+        },
+        {
+          "name": "owner_usdc",
+          "writable": true
+        },
+        {
+          "name": "owner_shares",
+          "writable": true
+        },
+        {
+          "name": "holding",
+          "docs": [
+            "Created on first trade. `init_if_needed` is safe here because the handler",
+            "guards on `owner == Pubkey::default()` before initialising fields."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  104,
+                  111,
+                  108,
+                  100,
+                  105,
+                  110,
+                  103
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              },
+              {
+                "kind": "account",
+                "path": "asset"
+              }
+            ]
+          }
+        },
+        {
+          "name": "receipt",
+          "docs": [
+            "Unique per trade via the asset's monotonic counter."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  99,
+                  101,
+                  105,
+                  112,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "asset"
+              },
+              {
+                "kind": "account",
+                "path": "asset.trade_count",
+                "account": "Asset"
+              }
+            ]
+          }
+        },
+        {
+          "name": "price_account",
+          "docs": [
+            "the owning program, the embedded feed id, and staleness."
+          ]
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "TradeArgs"
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "Asset",
+      "discriminator": [
+        234,
+        180,
+        241,
+        252,
+        139,
+        224,
+        160,
+        8
+      ]
+    },
+    {
+      "name": "Holding",
+      "discriminator": [
+        23,
+        96,
+        64,
+        250,
+        235,
+        191,
+        0,
+        144
+      ]
+    },
+    {
+      "name": "MockOracle",
+      "discriminator": [
+        208,
+        74,
+        71,
+        99,
+        160,
+        22,
+        158,
+        240
+      ]
+    },
+    {
+      "name": "Protocol",
+      "discriminator": [
+        45,
+        39,
+        101,
+        43,
+        115,
+        72,
+        131,
+        40
+      ]
+    },
+    {
+      "name": "TradeReceipt",
+      "discriminator": [
+        81,
+        155,
+        106,
+        207,
+        56,
+        213,
+        102,
+        174
+      ]
+    },
+    {
+      "name": "AssetVault",
+      "discriminator": [
+        193,
+        119,
+        127,
+        25,
+        157,
+        102,
+        175,
+        164
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "TradeReceiptEvent",
+      "discriminator": [
+        243,
+        116,
+        28,
+        223,
+        126,
+        203,
+        33,
+        219
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "Unauthorized",
+      "msg": "Only the admin may perform this action"
+    },
+    {
+      "code": 6001,
+      "name": "StalePrice",
+      "msg": "Price is stale"
+    },
+    {
+      "code": 6002,
+      "name": "WrongPriceAccount",
+      "msg": "Price account is not the one this asset is configured with"
+    },
+    {
+      "code": 6003,
+      "name": "WrongMint",
+      "msg": "Token account does not hold the expected mint"
+    },
+    {
+      "code": 6004,
+      "name": "InvalidPrice",
+      "msg": "Oracle reported a non-positive price"
+    },
+    {
+      "code": 6005,
+      "name": "InsufficientVaultReserve",
+      "msg": "Vault reserve is insufficient"
+    },
+    {
+      "code": 6006,
+      "name": "InsufficientHolding",
+      "msg": "Holding balance is insufficient"
+    },
+    {
+      "code": 6007,
+      "name": "InvalidAmount",
+      "msg": "Invalid trade amount"
+    },
+    {
+      "code": 6008,
+      "name": "MathOverflow",
+      "msg": "Arithmetic overflow"
+    },
+    {
+      "code": 6009,
+      "name": "InvalidSymbol",
+      "msg": "Asset symbol is not valid UTF-8 or is empty"
+    }
+  ],
+  "types": [
+    {
+      "name": "InitializeArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "usdc_mint",
+            "docs": [
+              "Reserve asset mint. USDC on devnet."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "spread_bps",
+            "type": "u16"
+          }
+        ]
+      }
+    },
+    {
+      "name": "RegisterAssetArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "symbol",
+            "type": {
+              "array": [
+                "u8",
+                8
+              ]
+            }
+          },
+          {
+            "name": "price_source",
+            "type": {
+              "defined": {
+                "name": "PriceSource"
+              }
+            }
+          },
+          {
+            "name": "price_feed",
+            "docs": [
+              "Pyth feed id when `price_source == Pyth`; ignored for `Mock`."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "decimals",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TradeArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "side",
+            "type": {
+              "defined": {
+                "name": "TradeSide"
+              }
+            }
+          },
+          {
+            "name": "amount",
+            "docs": [
+              "USDC notional, 6 decimals. `$500` is `500_000_000`."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "source_receipt",
+            "docs": [
+              "The receipt this trade is FOMOing, if any. Recorded for provenance only:",
+              "nothing about the source trade is copied, and the signer pays their own",
+              "way at their own size."
+            ],
+            "type": {
+              "option": "pubkey"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Asset",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "id",
+            "type": "u16"
+          },
+          {
+            "name": "symbol",
+            "type": {
+              "array": [
+                "u8",
+                8
+              ]
+            }
+          },
+          {
+            "name": "mint",
+            "docs": [
+              "Synthetic share mint. The vault PDA holds mint authority."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "vault",
+            "docs": [
+              "Vault PDA that custody the USDC reserve and signs mints/burns."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "price_feed",
+            "docs": [
+              "Expected price identity, interpreted per `price_source`:",
+              "- `Pyth`: the 32-byte Pyth feed id. The caller passes whichever",
+              "`PriceUpdateV2` account it likes and `pyth` verifies the account's",
+              "embedded feed id matches this, because Pyth account addresses are",
+              "shard-derived and not stable to hardcode.",
+              "- `Mock`: unused; the MockOracle PDA is derived from the asset."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "price_source",
+            "type": {
+              "defined": {
+                "name": "PriceSource"
+              }
+            }
+          },
+          {
+            "name": "decimals",
+            "docs": [
+              "Decimals of the synthetic mint. Matches USDC's 6 so a share priced at",
+              "$178.24 is `178_240_000`."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "trade_count",
+            "docs": [
+              "Monotonic per-asset counter, used to derive unique receipt PDAs."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PriceSource",
+      "docs": [
+        "Where an asset's price comes from.",
+        "",
+        "Verified 2026-09-18: on devnet the newest on-chain account for every Pyth",
+        "US-equity feed was days old (NVDA 23d, MSFT 78d), while the same feeds on",
+        "mainnet were seconds old. The feeds are not broken — they are simply not",
+        "published to devnet. So all five assets run on `Mock` there, and the variant",
+        "exists so mainnet is a config flip rather than a rewrite.",
+        "See docs/PYTH_VERIFICATION.md."
+      ],
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Pyth"
+          },
+          {
+            "name": "Mock"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Holding",
+      "docs": [
+        "A user's position in one synthetic asset. Created lazily on first trade."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "asset",
+            "type": "pubkey"
+          },
+          {
+            "name": "quantity",
+            "docs": [
+              "Shares held, in the asset mint's decimals."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "avg_price",
+            "docs": [
+              "Volume-weighted average entry price, in USDC per share (6dp)."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MockOracle",
+      "docs": [
+        "Admin-pushed price for assets whose real feed is unusable.",
+        "",
+        "This exists because of a verified constraint, not as a shortcut: the newest",
+        "on-chain account for every Pyth US-equity feed on devnet was days old",
+        "(NVDA 23d, MSFT 78d), while the same feeds on mainnet were seconds old. The",
+        "feeds are not broken, they are not published to devnet. Every synthetic",
+        "asset therefore prices from here on devnet. The trading instruction cannot",
+        "tell the difference between this and a Pyth account; both resolve through",
+        "`pyth::read_price`."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "asset",
+            "type": "pubkey"
+          },
+          {
+            "name": "price",
+            "docs": [
+              "USD per share, 6dp."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "updated_at",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Protocol",
+      "docs": [
+        "Global, one-time configuration. `initialize` creates the single PDA at",
+        "seeds `[b\"protocol\"]`."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "admin",
+            "type": "pubkey"
+          },
+          {
+            "name": "usdc_mint",
+            "docs": [
+              "The SPL mint used as the vault reserve asset (USDC on devnet)."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "asset_count",
+            "docs": [
+              "Number of assets registered so far. Also the next asset id."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "spread_bps",
+            "docs": [
+              "Spread charged on top of (buy) / below (sell) the oracle price."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TradeReceipt",
+      "docs": [
+        "The verifiable primitive the whole product rests on: proof that this wallet",
+        "actually executed this trade against this vault.",
+        "",
+        "A receipt is minted for the FOMOer's own trade too. `source_receipt` records",
+        "which receipt inspired it, but nothing about the source trade is copied:",
+        "amount, price and signature all belong to the signer. See docs/ARCHITECTURE.md."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "asset",
+            "type": "pubkey"
+          },
+          {
+            "name": "side",
+            "type": {
+              "defined": {
+                "name": "TradeSide"
+              }
+            }
+          },
+          {
+            "name": "amount_usdc",
+            "type": "u64"
+          },
+          {
+            "name": "quantity",
+            "type": "u64"
+          },
+          {
+            "name": "price",
+            "docs": [
+              "Effective price after spread, USDC per share (6dp)."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          },
+          {
+            "name": "source_receipt",
+            "docs": [
+              "The receipt this trade FOMO'd, if any."
+            ],
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TradeSide",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Buy"
+          },
+          {
+            "name": "Sell"
+          }
+        ]
+      }
+    },
+    {
+      "name": "AssetVault",
+      "docs": [
+        "Per-asset USDC reserve. This PDA owns the vault's USDC token account and is",
+        "the mint authority for the synthetic share mint, so both the reserve and the",
+        "supply are controlled by program-derived signatures rather than a keypair."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "asset",
+            "type": "pubkey"
+          },
+          {
+            "name": "usdc_reserve",
+            "docs": [
+              "Cached mirror of the vault USDC token account balance, kept for cheap",
+              "reads. The token account is the source of truth."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "shares_outstanding",
+            "docs": [
+              "Total synthetic shares ever minted minus burned."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TradeReceiptEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "asset",
+            "type": "pubkey"
+          },
+          {
+            "name": "side",
+            "type": {
+              "defined": {
+                "name": "TradeSide"
+              }
+            }
+          },
+          {
+            "name": "amount_usdc",
+            "type": "u64"
+          },
+          {
+            "name": "quantity",
+            "type": "u64"
+          },
+          {
+            "name": "price",
+            "type": "u64"
+          },
+          {
+            "name": "source_receipt",
+            "type": {
+              "option": "pubkey"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
