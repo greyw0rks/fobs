@@ -111,18 +111,10 @@ export function AppShell({
 /** Shown wherever the live connection state is worth being honest about. */
 export function LiveDot({ connected }: { connected: boolean }) {
   return (
-    <span className="chip" title={connected ? "Receiving live events" : "Reconnecting"}>
-      <span
-        aria-hidden
-        style={{
-          display: "inline-block",
-          width: 7,
-          height: 7,
-          borderRadius: 999,
-          marginRight: 6,
-          background: connected ? "#18a058" : "#b58b00"
-        }}
-      />
+    <span
+      className={`chip live-dot ${connected ? "on" : "off"}`}
+      title={connected ? "Receiving live events" : "Reconnecting"}
+    >
       {connected ? "Live" : "Reconnecting"}
     </span>
   );

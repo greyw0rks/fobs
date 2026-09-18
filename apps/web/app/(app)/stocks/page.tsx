@@ -41,7 +41,7 @@ export default async function StocksPage() {
                   </span>
                 </span>
                 <span style={{ textAlign: "right" }}>
-                  <strong>{price(asset.price)}</strong>
+                  <strong className="num">{price(asset.price)}</strong>
                   <br />
                   <span className="muted">
                     {asset.priceKnown

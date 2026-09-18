@@ -50,13 +50,12 @@ export default async function FriendsPage({
           survives a refresh, and works without JavaScript. */}
       <form className="row" method="get" action="/friends" style={{ marginBottom: 18 }}>
         <input
-          className="input"
+          className="input search"
           type="search"
           name="q"
           defaultValue={query}
           placeholder="Search by name or @username"
           aria-label="Search people"
-          style={{ flex: 1, fontSize: 16, height: 44 }}
         />
         <button className="button" type="submit">
           Search

@@ -266,7 +266,7 @@ function EventLine({ event }: { event: FobsEvent }) {
   if (event.type === "trade") {
     return (
       <>
-        <span style={{ color: "#18a058" }}>trade</span> @{event.username}{" "}
+        <span className="ev-trade">trade</span> @{event.username}{" "}
         {event.side} {money(Number(event.amountUsdc))} {event.assetSymbol}
         {event.sourceTradeId ? " (FOMO)" : ""}
         {event.txSignature ? (
@@ -283,7 +283,7 @@ function EventLine({ event }: { event: FobsEvent }) {
   if (event.type === "notification") {
     return (
       <>
-        <span style={{ color: "#7a5af8" }}>notify</span> {event.kind} →{" "}
+        <span className="ev-notify">notify</span> {event.kind} →{" "}
         {event.userId.slice(0, 6)}… from @{event.actorUsername ?? "system"}{" "}
         {event.assetSymbol ?? ""}
       </>

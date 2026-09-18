@@ -1,17 +1,133 @@
+/* ==========================================================================
+   FOBS — a dark trading terminal.
+   ==========================================================================
+
+   Organised as three layers, in this order:
+
+     1. Tokens    — every colour, size, space and radius. Nothing below this
+                    layer contains a literal hex, so the palette can be read in
+                    one screen.
+     2. Base      — element defaults, focus, scrollbars, selection.
+     3. Components — one block per class, in the order the app renders them.
+
+   Two rules this file enforces, because they are product rules rather than
+   taste, and both of them are easy to undo by accident:
+
+     · Green and red are only ever applied to a *number* that was read from the
+       chain or the oracle. Never to a heading, an icon, a border or a button
+       background used as decoration. A green button would train the eye to read
+       "up" where the product means "go", and this app spends a lot of copy
+       telling people not to read things into figures.
+
+     · Nothing here invents elevation with a shadow. Depth is a hairline and a
+       slightly lighter surface. The previous stylesheet put one very large
+       shadow (0 18px 50px) on every card regardless of whether it was floating
+       above anything, which flattened the whole page into one plane.
+
+   Also note what is *not* here: there is no `prefers-color-scheme` block and no
+   theme toggle. This app is deliberately dark, in the way a terminal is, and a
+   light variant would be a second design rather than a second palette.
+   `color-scheme: dark` below is what makes the native controls agree — form
+   fields, scrollbars, autofill — instead of rendering light-on-dark.
+   ========================================================================== */
+
 :root {
-  --bg: #f6f7f4;
-  --panel: #ffffff;
-  --ink: #111313;
-  --muted: #66706c;
-  --line: #dfe5dc;
-  --soft: #edf1ea;
-  --green: #18a058;
-  --green-dark: #0b7d41;
-  --red: #d84c40;
-  --gold: #f0a100;
-  --blue: #236bfe;
-  --shadow: 0 18px 50px rgba(22, 31, 26, 0.1);
+  color-scheme: dark;
+
+  /* -- Surfaces -----------------------------------------------------------
+     One background, one recessed surface, one raised surface. Cards sit on
+     `--sunken`; anything that needs to sit *above* a card (a chip, an avatar)
+     uses `--raised` so it does not disappear into the card it is on. */
+  --paper: #0b0d0e;
+  --sunken: #121517;
+  --raised: #16191c;
+  --hairline: #1e2427;
+  --hairline-strong: #2b3236;
+
+  /* -- Text ---------------------------------------------------------------
+     `--faint` is deliberately only used for non-essential marks (list
+     counters, separators). It does not meet AA on `--paper`, so it must never
+     carry a figure or a label someone needs to read. */
+  --ink: #e8ebe9;
+  --muted: #7c8783;
+  --faint: #5c6461;
+
+  /* -- Semantic -----------------------------------------------------------
+     `--up` / `--down` are the trade colours and appear on figures only.
+     `--fomo` is the one accent: the FOMO action, the active nav marker and
+     the logo mark. It is not used for decoration. */
+  --up: #3ddc84;
+  --down: #ff5c5c;
+  --fomo: #f7c948;
+  --info: #6ea8ff;
+
+  /* Disclosure. Amber, because a disclosure that reads as a footnote is a
+     disclosure that does not get read, and this build has six pages of
+     load-bearing disclosure copy. */
+  --warn-bg: #2a2205;
+  --warn-ink: #f5d98a;
+  --warn-ink-dim: #d9c07a;
+  --warn-rule: #f0a100;
+
+  /* -- Type ---------------------------------------------------------------
+     A real scale, which the previous stylesheet did not have: it stepped
+     12 → 20 → 24 → 32 with no relationship between them. */
+  --t-xs: 11px;
+  --t-sm: 12px;
+  --t-base: 14px;
+  --t-md: 16px;
+  --t-lg: 20px;
+  --t-xl: 28px;
+  --t-2xl: 40px;
+
+  /* -- Space / shape ------------------------------------------------------ */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 24px;
+  --s-6: 32px;
+  --s-7: 48px;
+  --radius: 4px;
+  --radius-pill: 999px;
+
+  /* -- Fonts --------------------------------------------------------------
+     Set by next/font in app/layout.tsx. The fallbacks matter: they are what
+     renders during `display: swap` and on the off chance the loader fails. */
+  --font-sans: var(--font-sans), Inter, ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", sans-serif;
+  --font-mono: var(--font-mono), "JetBrains Mono", ui-monospace, SFMono-Regular,
+    Menlo, Consolas, monospace;
+
+  /* -- Legacy aliases -----------------------------------------------------
+     These exist for exactly one reason: JSX refers to some of them directly,
+     in inline styles that a CSS-only restyle cannot reach. `TradeConfirmation`
+     in components/TradeCard.tsx writes `borderLeft: "4px solid var(--green)"`
+     by hand. Keeping the old names pointing at the new values means that call
+     site keeps working, and a miss elsewhere degrades to the right colour
+     rather than to an invalid one.
+
+     They are aliases, not a second palette: change the semantic token above,
+     not the name here. Anything written from scratch should use the semantic
+     name. */
+  --bg: var(--paper);
+  --panel: var(--sunken);
+  --line: var(--hairline);
+  --soft: var(--sunken);
+  --green: var(--up);
+  --green-dark: var(--up);
+  --red: var(--down);
+  --gold: var(--warn-rule);
+  --blue: var(--info);
+  /* Every `.card` and `.panel` still says `box-shadow: var(--shadow)`. The
+     layout now carries depth with hairlines instead, so the value is `none`
+     and those declarations become no-ops rather than being hunted down. */
+  --shadow: none;
 }
+
+/* ==========================================================================
+   2. Base
+   ========================================================================== */
 
 * {
   box-sizing: border-box;
@@ -19,9 +135,15 @@
 
 body {
   margin: 0;
-  background: linear-gradient(180deg, #fbfcf8 0%, var(--bg) 42%, #eef2ed 100%);
+  /* Flat, not a gradient. The previous stylesheet ran a three-stop gradient
+     down the page, which read as a lighting effect on a surface that is
+     supposed to be a terminal. */
+  background: var(--paper);
   color: var(--ink);
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: var(--font-sans);
+  font-size: var(--t-base);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
 }
 
 a {
@@ -37,45 +159,88 @@ input {
 button {
   border: 0;
   cursor: pointer;
+  background: none;
+  color: inherit;
 }
+
+/* The app previously shipped no focus style at all, which made it unusable
+   from the keyboard — tab did move focus, but nothing said where it went.
+   `:focus-visible` rather than `:focus` so a mouse click does not leave a ring
+   behind on every button. */
+:focus-visible {
+  outline: 2px solid var(--fomo);
+  outline-offset: 2px;
+  border-radius: var(--radius);
+}
+
+::selection {
+  background: var(--fomo);
+  color: var(--paper);
+}
+
+/* Inline code appears in prose (the landing page), in the dev harness and on
+   /sign-in where it names an env var. One rule for all three. */
+code {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+  background: var(--sunken);
+  border: 1px solid var(--hairline);
+  border-radius: 3px;
+  padding: 1px 5px;
+  color: var(--ink);
+}
+
+/* ==========================================================================
+   3. Components
+   ========================================================================== */
+
+/* -- Shell and navigation ------------------------------------------------- */
 
 .shell {
   min-height: 100vh;
   display: grid;
-  grid-template-columns: 250px minmax(0, 1fr);
+  grid-template-columns: 248px minmax(0, 1fr);
 }
 
 .sidebar {
   position: sticky;
   top: 0;
   height: 100vh;
-  border-right: 1px solid var(--line);
-  padding: 24px 18px;
-  background: rgba(255, 255, 255, 0.75);
+  border-right: 1px solid var(--hairline);
+  padding: var(--s-5) var(--s-4);
+  background: rgba(11, 13, 14, 0.85);
   backdrop-filter: blur(18px);
 }
 
 .brand {
   display: flex;
-  gap: 12px;
+  gap: var(--s-3);
   align-items: center;
   margin-bottom: 26px;
 }
 
+/* The logo is the one place `--fomo` is used as a fill rather than as an
+   action. A single amber square is the whole brand, and it is the only
+   saturated block in the chrome. */
 .mark {
-  width: 44px;
-  height: 44px;
+  width: 32px;
+  height: 32px;
+  flex: none;
   display: grid;
   place-items: center;
-  border-radius: 8px;
-  color: white;
-  font-weight: 900;
-  background: linear-gradient(135deg, var(--ink), var(--green) 70%, var(--gold));
+  border-radius: var(--radius);
+  color: var(--paper);
+  font-weight: 800;
+  font-size: var(--t-md);
+  background: var(--fomo);
 }
 
 .brand h1 {
   margin: 0;
-  font-size: 20px;
+  font-size: var(--t-base);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 .brand p,
@@ -85,214 +250,342 @@ button {
 
 .brand p {
   margin: 1px 0 0;
-  font-size: 12px;
+  font-size: var(--t-sm);
 }
 
 .nav {
   display: grid;
-  gap: 8px;
+  gap: 2px;
 }
 
 .nav a,
 .button,
-.secondary,
-.danger {
+.secondary {
   min-height: 40px;
-  border-radius: 8px;
+  border-radius: var(--radius);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  font-weight: 750;
+  gap: var(--s-2);
+  font-weight: 600;
 }
 
 .nav a {
   justify-content: flex-start;
-  padding: 0 12px;
+  padding: 0 var(--s-3);
   color: var(--muted);
 }
 
-.nav a:hover,
+/* The active marker is an inset shadow rather than a border, so selecting a
+   nav item does not move the text by a pixel as it turns on. */
+.nav a:hover {
+  background: var(--sunken);
+  color: var(--ink);
+}
+
 .nav a.active {
-  background: var(--ink);
-  color: white;
+  background: var(--sunken);
+  color: var(--ink);
+  box-shadow: inset 2px 0 0 var(--fomo);
 }
 
 .main {
-  padding: 26px;
+  padding: var(--s-5) var(--s-6);
+  min-width: 0;
 }
 
 .topbar {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: 18px;
-  margin-bottom: 18px;
+  gap: var(--s-4);
+  margin-bottom: var(--s-4);
 }
 
 .topbar h2 {
   margin: 0;
-  font-size: 32px;
-  line-height: 1.08;
+  font-size: var(--t-xl);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
 }
 
 .topbar p {
-  margin: 8px 0 0;
+  margin: var(--s-2) 0 0;
   color: var(--muted);
+  max-width: 68ch;
 }
+
+/* -- Layout --------------------------------------------------------------- */
 
 .grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.45fr) 360px;
-  gap: 18px;
+  grid-template-columns: minmax(0, 1.45fr) 340px;
+  gap: var(--s-4);
   align-items: start;
 }
 
 .feed,
 .stack {
   display: grid;
-  gap: 12px;
+  gap: var(--s-3);
+  min-width: 0;
 }
+
+/* -- Surfaces -------------------------------------------------------------
+   Both card and panel are border-defined now. The only difference is the text
+   that tends to live inside them, so they share every rule. */
 
 .card,
 .panel {
-  border: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.9);
-  border-radius: 8px;
+  border: 1px solid var(--hairline);
+  background: var(--sunken);
+  border-radius: var(--radius);
   box-shadow: var(--shadow);
 }
 
 .card {
-  padding: 16px;
+  padding: var(--s-4);
 }
 
 .panel {
-  padding: 16px;
+  padding: var(--s-4);
+}
+
+.card:hover {
+  border-color: var(--hairline-strong);
+}
+
+/* The post-trade receipt. It carries the trade colour on its edge because that
+   is a real fact about the trade, not decoration — and it is the one card in
+   the feed the eye should find immediately after a fill. */
+.card.confirmed {
+  border-left-width: 3px;
+}
+
+.card.confirmed.buy {
+  border-left-color: var(--up);
+}
+
+.card.confirmed.sell {
+  border-left-color: var(--down);
 }
 
 .row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 14px;
+  gap: var(--s-3);
 }
 
 .user {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--s-2);
+  min-width: 0;
 }
 
+/* Flat, ringed, and set in the ink colour. The old version was a blue-to-green
+   gradient with white initials, which on a near-black page would have been the
+   loudest thing on every row — and it made two dozen people read as two dozen
+   brand marks. */
 .avatar {
-  width: 38px;
-  height: 38px;
-  border-radius: 8px;
+  width: 34px;
+  height: 34px;
+  flex: none;
+  border-radius: var(--radius);
   display: grid;
   place-items: center;
-  color: white;
-  font-weight: 850;
-  background: linear-gradient(135deg, var(--blue), var(--green));
+  color: var(--ink);
+  background: var(--raised);
+  border: 1px solid var(--hairline-strong);
+  font-weight: 700;
+  font-size: var(--t-sm);
+  letter-spacing: 0.02em;
 }
 
+/* Chips sit on `--sunken` cards, so they carry a border rather than a fill —
+   a filled chip would need `--hairline`, and muted text on `--hairline` is
+   4.2:1, under AA. Outlined, the effective background is the card and the
+   ratio is 4.9:1. */
 .chip,
 .synthetic {
   display: inline-flex;
   align-items: center;
-  height: 26px;
-  padding: 0 9px;
-  border: 1px solid var(--line);
-  background: var(--soft);
-  border-radius: 999px;
+  height: 22px;
+  padding: 0 var(--s-2);
+  border: 1px solid var(--hairline-strong);
+  background: transparent;
+  border-radius: var(--radius);
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--t-xs);
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   white-space: nowrap;
 }
 
+/* -- Type ---------------------------------------------------------------- */
+
 .trade-title {
-  font-size: 24px;
-  margin: 14px 0 4px;
+  font-size: var(--t-lg);
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  margin: var(--s-3) 0 var(--s-1);
 }
 
+/* Mono with real tabular figures. Applied in JSX to the handful of places that
+   render a price, a size or a running total — it is the difference between a
+   column of numbers and a column of shapes. */
+.num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+  letter-spacing: -0.01em;
+}
+
+/* The line under a feed card's headline: "1,240.00 USDC · 6.79 shares at
+   182.40". One class, because it is the same line in four places. */
+.figures {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+  font-size: var(--t-sm);
+  letter-spacing: -0.01em;
+  color: var(--muted);
+}
+
+/* -- Buttons -------------------------------------------------------------
+   The primary button is near-white on near-black, not green. Green means "this
+   price went up" everywhere else in this app; a green button would be the same
+   colour saying something else. Buy and sell carry the trade colours because
+   there the colour *is* the meaning. */
+
 .button {
-  padding: 0 14px;
-  color: white;
-  background: var(--green);
+  padding: 0 var(--s-4);
+  color: var(--paper);
+  background: var(--ink);
+  border: 1px solid transparent;
 }
 
 .button:hover {
-  background: var(--green-dark);
+  background: #ffffff;
 }
 
-.secondary {
-  padding: 0 14px;
-  background: white;
-  border: 1px solid var(--line);
+.button.buy {
+  background: var(--up);
+  border-color: var(--up);
 }
 
-.danger {
-  padding: 0 14px;
-  color: white;
-  background: var(--red);
+.button.buy:hover {
+  background: #5ee89a;
+}
+
+.button.sell {
+  background: var(--down);
+  border-color: var(--down);
+}
+
+.button.sell:hover {
+  background: #ff7676;
 }
 
 .fomo {
-  background: #f7c948;
+  background: var(--fomo);
+  color: var(--paper);
+}
+
+.fomo:hover {
+  background: #ffd75e;
+}
+
+.secondary {
+  padding: 0 var(--s-4);
+  background: transparent;
+  border: 1px solid var(--hairline-strong);
   color: var(--ink);
 }
 
+.secondary:hover {
+  border-color: var(--muted);
+  background: var(--raised);
+}
+
+/* Error text, not an error button — every call site in this app renders it as
+   a <p>. It was previously styled as a filled red pill and pulled into the
+   button flex group, which made an error message look like a control. */
+.danger {
+  color: var(--down);
+  font-weight: 600;
+  margin: var(--s-2) 0;
+}
+
+.button:disabled,
+.secondary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.button:disabled:hover {
+  background: var(--ink);
+}
+
+/* -- Asset and holding rows ----------------------------------------------- */
+
 .asset-list {
   display: grid;
-  gap: 8px;
+  gap: var(--s-2);
 }
 
 .asset-row,
 .holding-row {
   display: flex;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--s-3);
   align-items: center;
-  padding: 12px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: white;
+  padding: var(--s-3);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  background: var(--raised);
 }
 
-.price-up {
-  color: var(--green-dark);
-  font-weight: 800;
+.asset-row:hover {
+  border-color: var(--hairline-strong);
 }
 
-.price-down {
-  color: var(--red);
-  font-weight: 800;
-}
+/* -- P&L -----------------------------------------------------------------
+   Kept as two classes rather than an inline colour because the caller decides
+   which one applies, and neither is ever applied to a figure whose price was
+   not read — the callers render "price not read" instead, because a made-up
+   gain is worse than no gain. */
 
-/* Unrealized P&L. Never applied to a figure whose price was not read — the
-   caller renders "price not read" instead, because a made-up gain is worse
-   than no gain. */
+.price-up,
 .gain {
-  color: var(--green-dark);
-  font-weight: 800;
+  color: var(--up);
+  font-weight: 700;
 }
 
+.price-down,
 .loss {
-  color: var(--red);
-  font-weight: 800;
+  color: var(--down);
+  font-weight: 700;
 }
+
+/* -- Chart ---------------------------------------------------------------- */
 
 .chart {
   margin: 0;
 }
 
 .chart figcaption {
-  margin-top: 10px;
-  font-size: 13px;
+  margin-top: var(--s-3);
+  font-size: var(--t-sm);
+  color: var(--muted);
 }
 
 .chart-grid {
-  stroke: var(--line);
+  stroke: var(--hairline);
   stroke-width: 1;
-  stroke-dasharray: 4 4;
+  stroke-dasharray: 3 5;
 }
 
 .chart-line {
@@ -304,106 +597,446 @@ button {
 }
 
 .chart-dot {
-  stroke: white;
-  stroke-width: 1.5;
+  stroke: var(--sunken);
+  stroke-width: 2;
 }
 
 .chart-dot.buy {
-  fill: var(--green);
+  fill: var(--up);
 }
 
 .chart-dot.sell {
-  fill: var(--red);
+  fill: var(--down);
 }
 
-/* The wallet panel is a definition list; browsers indent `dd` 40px by default,
-   which reads as a broken layout rather than a quotation. */
+/* -- Definition lists -----------------------------------------------------
+   Browsers indent `dd` by 40px by default, which reads as a broken layout
+   rather than as a quotation. */
+
 dt,
 dd {
   margin: 0;
 }
 
 dt {
-  font-size: 12px;
+  font-size: var(--t-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
 }
 
 dd {
-  font-weight: 700;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
   color: var(--ink);
-  margin-bottom: 8px;
+  margin-bottom: var(--s-2);
 }
+
+/* Addresses and signatures are hex, so they are mono wherever they appear. */
+dd .chip,
+.panel .chip {
+  font-family: var(--font-mono);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* -- Trade panel ---------------------------------------------------------- */
 
 .trade-panel {
   display: grid;
-  gap: 12px;
+  gap: var(--s-3);
 }
 
 .segmented {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 4px;
-  padding: 4px;
-  background: var(--soft);
-  border-radius: 8px;
+  gap: var(--s-1);
+  padding: var(--s-1);
+  background: var(--paper);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
 }
 
 .segmented button {
-  height: 36px;
-  border-radius: 6px;
+  height: 34px;
+  border-radius: 3px;
   background: transparent;
-  font-weight: 800;
+  font-weight: 700;
   color: var(--muted);
 }
 
+.segmented button:hover {
+  color: var(--ink);
+}
+
+/* The active rules need both classes: the markup carries `buy` / `sell`
+   permanently and adds `active` to whichever side is selected. Until this
+   restyle the markup only ever emitted `active`, so neither of these matched
+   and the Buy/Sell toggle gave no indication of which side was chosen. */
 .segmented button.active.buy {
-  background: var(--green);
-  color: white;
+  background: var(--up);
+  color: var(--paper);
 }
 
 .segmented button.active.sell {
-  background: var(--red);
-  color: white;
+  background: var(--down);
+  color: var(--paper);
 }
 
 .input {
-  height: 50px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 0 14px;
-  font-size: 20px;
-  font-weight: 850;
+  height: 46px;
+  width: 100%;
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius);
+  padding: 0 var(--s-3);
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--t-lg);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.input::placeholder {
+  color: var(--faint);
+  font-size: var(--t-base);
+  letter-spacing: 0;
+}
+
+.input:focus {
+  border-color: var(--fomo);
+}
+
+/* Compact variant for the one search field, which should not shout at the
+   same size as an order size. */
+.input.search {
+  height: 40px;
+  flex: 1;
+  font-family: var(--font-sans);
+  font-size: var(--t-base);
+  font-weight: 400;
 }
 
 .quote {
-  padding: 12px;
-  border-radius: 8px;
-  background: var(--soft);
+  padding: var(--s-3);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  background: var(--paper);
   display: grid;
-  gap: 8px;
+  gap: var(--s-2);
 }
 
+/* -- Disclosure ----------------------------------------------------------
+   The most important block in the app, and the one the dark theme most easily
+   ruins. It has to stay a *quiet* block — it appears on six pages and is read
+   once, so it should be legible and skippable, not alarming. Amber on near-
+   black at 11.4:1 does that; a saturated fill would not. */
+
 .disclosure {
-  border-left: 4px solid var(--gold);
-  padding: 12px;
-  border-radius: 8px;
-  background: #fff9e8;
-  color: #594308;
+  border: 1px solid var(--warn-rule);
+  border-left-width: 3px;
+  padding: var(--s-3);
+  border-radius: var(--radius);
+  background: var(--warn-bg);
+  color: var(--warn-ink);
 }
+
+.disclosure strong {
+  color: var(--warn-ink);
+  font-weight: 700;
+}
+
+/* Muted text inside a disclosure is amber-tinted rather than grey: `--muted`
+   is 4.2:1 on `--warn-bg`, which fails AA. */
+.disclosure .muted {
+  color: var(--warn-ink-dim);
+}
+
+.disclosure a {
+  color: var(--warn-ink);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* A code chip inside a disclosure sits on `--warn-bg`, where a `--sunken`
+   recess reads as a hole. */
+.disclosure code {
+  background: rgba(0, 0, 0, 0.25);
+  border-color: var(--warn-rule);
+  color: var(--warn-ink);
+}
+
+.disclosure ul {
+  margin: var(--s-2) 0 0;
+  padding-left: var(--s-4);
+  display: grid;
+  gap: var(--s-2);
+}
+
+.disclosure li::marker {
+  color: var(--warn-rule);
+}
+
+/* -- Allocation bar -------------------------------------------------------
+   The percentage widths are the whole point of the bar, so the slices must not
+   be shrunk to fit. */
 
 .allocation {
   display: flex;
   overflow: hidden;
-  border-radius: 999px;
-  height: 18px;
-  background: var(--soft);
-  margin: 14px 0;
+  border-radius: var(--radius);
+  height: 6px;
+  gap: 2px;
+  background: var(--paper);
+  margin: var(--s-4) 0;
 }
 
-/* The percentage widths are the whole point of the bar, so the slices must not
-   be shrunk to fit. */
 .allocation span {
   flex: none;
   display: block;
+}
+
+/* -- Dev harness ----------------------------------------------------------
+   Each event line is tagged with its kind. Two colours that appear nowhere
+   else in the app, so they stay classes rather than tokens — but classes, so
+   the harness moves with a palette change like everything else. */
+
+.ev-trade {
+  color: var(--up);
+}
+
+.ev-notify {
+  color: var(--info);
+}
+
+/* -- Live connection ------------------------------------------------------
+   Was three inline styles in AppShell.tsx. A dot whose colour says whether the
+   feed is actually connected, so it is allowed a colour of its own. */
+
+.live-dot {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+}
+
+.live-dot::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-pill);
+  background: var(--faint);
+}
+
+.live-dot.on::before {
+  background: var(--up);
+}
+
+.live-dot.off::before {
+  background: var(--fomo);
+}
+
+/* -- Feed view switcher --------------------------------------------------- */
+
+.tabs {
+  display: flex;
+  gap: var(--s-1);
+  margin: 0 0 var(--s-4);
+  padding: var(--s-1);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  background: var(--sunken);
+  width: fit-content;
+}
+
+.tab {
+  padding: var(--s-2) var(--s-4);
+  border-radius: 3px;
+  font-size: var(--t-sm);
+  font-weight: 600;
+  color: var(--muted);
+  text-decoration: none;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.tab:hover {
+  color: var(--ink);
+  background: var(--raised);
+}
+
+.tab.active {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+/* ==========================================================================
+   Landing, auth and legal pages
+   ==========================================================================
+
+   These five classes — .landing, .hero, .hero-body, .landing-section, .steps —
+   were used by app/page.tsx, app/welcome/page.tsx, app/sign-in/page.tsx,
+   app/terms/page.tsx and app/dev/page.tsx, and none of them was ever defined.
+   Those pages have been rendering as unstyled browser defaults: a full-bleed
+   serif-ish wall with a 40px-indented <ol> in the middle of it.
+
+   They are a different reading mode from the app — long-form prose rather than
+   dense rows — so they get their own measure and leading. Body copy here is
+   15px/1.7 at a 68ch measure, and the important words are raised to `--ink`
+   while the rest stays `--muted`. On a dark background it is the contrast
+   between those two that carries the structure, not weight or size. */
+
+.landing {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: var(--s-6) var(--s-5) 96px;
+}
+
+/* Works standalone too — app/dev/page.tsx uses .hero with no .landing parent. */
+.hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-4);
+  padding-bottom: var(--s-4);
+  border-bottom: 1px solid var(--hairline);
+  margin-bottom: var(--s-7);
+}
+
+/* `.brand` carries a 26px bottom margin for the sidebar. In a hero that margin
+   is dead space above the rule. */
+.hero .brand {
+  margin-bottom: 0;
+}
+
+.hero-body {
+  padding-bottom: var(--s-6);
+  border-bottom: 1px solid var(--hairline);
+  margin-bottom: var(--s-7);
+}
+
+.hero-body h2 {
+  font-size: var(--t-2xl);
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+  margin: 0 0 var(--s-4);
+  max-width: 18ch;
+}
+
+.hero-body p {
+  font-size: var(--t-md);
+  line-height: 1.65;
+  color: var(--muted);
+  margin: 0 0 var(--s-5);
+  max-width: 60ch;
+}
+
+.hero-body strong {
+  color: var(--ink);
+}
+
+.landing-section {
+  margin-bottom: var(--s-7);
+}
+
+.landing-section h3 {
+  font-size: var(--t-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: 600;
+  color: var(--muted);
+  margin: 0 0 var(--s-3);
+}
+
+.landing-section p {
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--muted);
+  max-width: 68ch;
+  margin: 0 0 var(--s-3);
+}
+
+.landing-section strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.landing-section em {
+  color: var(--ink);
+  font-style: italic;
+}
+
+/* A disclosure rendered as a landing section — `.landing-section h3` and
+   `.landing-section p` above set `--muted`, which is 4.2:1 on `--warn-bg` and
+   fails AA. Two classes here rather than one, so this beats them on
+   specificity instead of depending on which block happens to come last. */
+.landing-section.disclosure h3,
+.landing-section.disclosure p,
+.landing-section.disclosure strong {
+  color: var(--warn-ink);
+}
+
+/* Inline links inside prose. The global `a { text-decoration: none }` above is
+   right for nav and cards and wrong here: on /terms and the landing page it
+   made every inline link indistinguishable from the sentence around it. */
+.landing a:not(.button):not(.secondary):not(.brand) {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: var(--hairline-strong);
+  transition: text-decoration-color 0.15s ease;
+}
+
+.landing a:not(.button):not(.secondary):not(.brand):hover {
+  text-decoration-color: var(--fomo);
+}
+
+/* The "How it works" list. A real ordered list rather than a styled one: the
+   counter is in the gutter, in mono, and deliberately `--faint` because the
+   number is navigational and the sentence is the content. */
+.steps {
+  list-style: none;
+  counter-reset: step;
+  padding: 0;
+  margin: 0;
+}
+
+.steps li {
+  counter-increment: step;
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  gap: var(--s-3);
+  padding: var(--s-3) 0;
+  border-top: 1px solid var(--hairline);
+  font-size: 15px;
+  line-height: 1.65;
+  color: var(--muted);
+}
+
+.steps li:last-child {
+  border-bottom: 1px solid var(--hairline);
+}
+
+.steps li::before {
+  content: counter(step, decimal-leading-zero);
+  font-family: var(--font-mono);
+  font-size: var(--t-sm);
+  color: var(--faint);
+  padding-top: 2px;
+}
+
+.steps li strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+/* ==========================================================================
+   Responsive
+   ========================================================================== */
+
+@media (max-width: 1040px) {
+  .grid {
+    grid-template-columns: minmax(0, 1fr) 300px;
+  }
 }
 
 @media (max-width: 960px) {
@@ -415,56 +1048,54 @@ dd {
     position: static;
     height: auto;
     border-right: 0;
-    border-bottom: 1px solid var(--line);
+    border-bottom: 1px solid var(--hairline);
   }
 
   .nav {
     grid-auto-flow: column;
     overflow-x: auto;
+    gap: var(--s-1);
+  }
+
+  .nav a {
+    white-space: nowrap;
   }
 
   .grid {
     grid-template-columns: 1fr;
   }
-}
 
-/* Feed view switcher: Following | For You | Stocks */
-.tabs {
-  display: flex;
-  gap: 6px;
-  margin: 0 0 18px;
-  padding: 5px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: var(--panel);
-  box-shadow: var(--shadow);
-  width: fit-content;
-}
+  .main {
+    padding: var(--s-4) var(--s-4) var(--s-6);
+  }
 
-.tab {
-  padding: 9px 20px;
-  border-radius: 999px;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--muted);
-  text-decoration: none;
-  transition: background 0.15s ease, color 0.15s ease;
-}
-
-.tab:hover {
-  color: var(--ink);
-  background: var(--soft);
-}
-
-.tab.active {
-  background: var(--ink);
-  color: #ffffff;
-}
-
-@media (max-width: 960px) {
   .tabs {
     width: 100%;
     overflow-x: auto;
   }
+
+  .topbar h2 {
+    font-size: var(--t-lg);
+  }
+
+  .hero-body h2 {
+    font-size: var(--t-xl);
+  }
+
+  .landing {
+    padding: var(--s-5) var(--s-4) var(--s-7);
+  }
 }
 
+/* Honour a reduced-motion preference. The only transition in the file is the
+   tab hover, but this is the rule that keeps the next one honest. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

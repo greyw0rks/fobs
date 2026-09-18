@@ -53,7 +53,7 @@ export function FeedCard({
       <h3 className="trade-title">
         {verb} {synthetic(trade.asset.symbol)}
       </h3>
-      <p className="muted">
+      <p className="figures">
         {money(trade.amountUsdc)} · {qty(trade.quantity)} shares at {price(trade.price)}
       </p>
 
@@ -137,7 +137,7 @@ function FomoForm({
         <label className="muted" htmlFor={`fomo-${trade.id}`}>
           Your size (USDC)
         </label>
-        <span className="muted">suggested {money(suggested)}</span>
+        <span className="figures">suggested {money(suggested)}</span>
       </div>
       <input
         id={`fomo-${trade.id}`}
@@ -195,7 +195,9 @@ export function TradeConfirmation({
   const fomo = trade.source !== null;
 
   return (
-    <div className="card" style={{ borderLeft: "4px solid var(--green)" }}>
+    <div
+      className={`card confirmed ${trade.side === "buy" ? "buy" : "sell"}`}
+    >
       <div className="row">
         <h3>{fomo ? "Your FOMO is on chain" : "Your trade is on chain"}</h3>
         <button className="secondary" onClick={onDismiss}>
@@ -206,7 +208,7 @@ export function TradeConfirmation({
       <p className="trade-title">
         {trade.side === "buy" ? "Bought" : "Sold"} {synthetic(trade.asset.symbol)}
       </p>
-      <p className="muted">
+      <p className="figures">
         {money(trade.amountUsdc)} · filled at {money(trade.price)} per share
       </p>
 
@@ -315,13 +317,13 @@ export function TradePanel({
 
       <div className="segmented">
         <button
-          className={side === "buy" ? "active" : ""}
+          className={`buy${side === "buy" ? " active" : ""}`}
           onClick={() => setSide("buy")}
         >
           Buy
         </button>
         <button
-          className={side === "sell" ? "active" : ""}
+          className={`sell${side === "sell" ? " active" : ""}`}
           onClick={() => setSide("sell")}
         >
           Sell
@@ -364,7 +366,7 @@ export function TradePanel({
       {blocked ? <p className="danger">{blocked}</p> : null}
 
       <button
-        className="button"
+        className={`button ${side}`}
         disabled={!valid || busy || blocked !== null || (side === "buy" && needsWallet === true)}
         onClick={async () => {
           setBusy(true);

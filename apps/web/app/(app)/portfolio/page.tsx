@@ -92,11 +92,15 @@ export default async function PortfolioPage() {
                       </span>
                     </span>
                     <span style={{ textAlign: "right" }}>
-                      <strong>
+                      <strong className="num">
                         {holding.value === null ? "—" : money(holding.value)}
                       </strong>
                       <br />
-                      <span className={holding.unrealizedPnl === null ? "muted" : pnlTone}>
+                      <span
+                        className={
+                          holding.unrealizedPnl === null ? "muted" : `num ${pnlTone}`
+                        }
+                      >
                         {holding.unrealizedPnl === null
                           ? "price not read"
                           : `${holding.unrealizedPnl >= 0 ? "+" : ""}${money(
@@ -141,15 +145,15 @@ export default async function PortfolioPage() {
               </p>
             ) : (
               <>
-                <p className="trade-title">{money(portfolio.totalValue)}</p>
-                <p className={pnlTone}>
+                <p className="trade-title num">{money(portfolio.totalValue)}</p>
+                <p className={`num ${pnlTone}`}>
                   {portfolio.unrealizedPnl! >= 0 ? "+" : ""}
                   {money(portfolio.unrealizedPnl!)} unrealized
                   {portfolio.unrealizedPct !== null
                     ? ` (${portfolio.unrealizedPct.toFixed(2)}%)`
                     : ""}
                 </p>
-                <p className="muted">
+                <p className="muted num">
                   Cost basis {money(portfolio.totalCost!)}
                 </p>
               </>
@@ -226,5 +230,18 @@ export default async function PortfolioPage() {
   );
 }
 
-/** Distinct enough to tell six slices apart; not a brand palette. */
-const ALLOCATION_COLOURS = ["#1f6feb", "#18a058", "#b58b00", "#a03bb0", "#c2410c", "#0e7490"];
+/**
+ * Six hues for the allocation bar. Not a brand palette — the bar is only 6px
+ * tall, so these are chosen to stay distinguishable from each other as thin
+ * slivers against `--paper`. The previous set was picked for a light background
+ * and went muddy on near-black. Every one is a light tint rather than a
+ * saturated mid-tone, because a mid-tone at this height reads as a gap.
+ */
+const ALLOCATION_COLOURS = [
+  "#6ea8ff",
+  "#3ddc84",
+  "#f7c948",
+  "#c084fc",
+  "#ff8a5c",
+  "#4dd4d4"
+];

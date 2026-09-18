@@ -96,7 +96,7 @@ export default async function FeedPage({
                     <span className="muted">{synthetic(asset.symbol)}</span>
                   </span>
                   <span style={{ textAlign: "right" }}>
-                    <strong>{price(asset.price)}</strong>
+                    <strong className="num">{price(asset.price)}</strong>
                     <br />
                     <span className="muted">
                       {asset.priceKnown ? `${asset.tradeCount} trades` : "price not read"}

@@ -5,6 +5,7 @@ node_modules/
 .next/
 out/
 next-env.d.ts
+*.tsbuildinfo
 
 # rust / anchor
 target/
@@ -26,6 +27,13 @@ apps/web/prisma/schema.dev.prisma
 # local sqlite database
 apps/web/prisma/*.db
 apps/web/prisma/*.db-journal
+
+# playwright output. The specs themselves are tracked — these are the run
+# artifacts (traces, screenshots, the HTML report).
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
 
 # os
 .DS_Store

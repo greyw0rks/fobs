@@ -60,7 +60,7 @@ export default async function AssetPage({
           <div className="card">
             <h3>Price</h3>
             {asset.priceKnown ? (
-              <p className="trade-title">{price(asset.price)}</p>
+              <p className="trade-title num">{price(asset.price)}</p>
             ) : (
               <p className="muted">
                 Not read yet. The indexer reads this from the asset&apos;s oracle
@@ -152,7 +152,7 @@ export default async function AssetPage({
 
           <div className="panel">
             <h3>Holders</h3>
-            <p className="trade-title">
+            <p className="trade-title num">
               {holders} {holders === 1 ? "account" : "accounts"}
             </p>
             <p className="muted">

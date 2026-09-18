@@ -11,7 +11,9 @@
     "smoke:loop": "tsx --env-file=.env.local scripts/smoke-loop.ts",
     "smoke:onboard": "tsx --env-file=.env.local scripts/smoke-onboard.ts",
     "verify:db": "tsx --env-file=.env.local scripts/verify-db.ts",
-    "rehearse": "tsx --env-file=.env.local scripts/rehearse.ts"
+    "rehearse": "tsx --env-file=.env.local scripts/rehearse.ts",
+    "e2e": "playwright test",
+    "e2e:report": "playwright show-report"
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.30.1",
@@ -26,6 +28,7 @@
     "zod": "^4.1.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@types/node": "^24.3.0",
     "@types/react": "^19.1.0",
     "@types/react-dom": "^19.1.0",
