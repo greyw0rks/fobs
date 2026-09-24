@@ -39,3 +39,6 @@ playwright/.cache/
 .DS_Store
 .vercel
 .env*
+
+# generated "brag" video composition artifacts — not part of the app
+brag-output/
