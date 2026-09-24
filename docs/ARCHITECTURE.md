@@ -149,10 +149,7 @@ before the core loop works would have been the main risk to shipping:
 - **PreStocks trading** — its exclusivity rules cover pre-IPO tokens, so the app
   does not *issue* competing synthetics. It does read PreStocks' market as a
   separate mainnet surface (`/prestocks`): scaled Token-2022 supply, epoch-based
-  transfer fee, and a premium surface checked against Pyth. Read-only, no
-  signature — see the cluster decision in [BOUNTY_PLAN.md](BOUNTY_PLAN.md). What
-  is *not* built is routing an order, because this app's wallets are devnet and a
-  mainnet swap needs a funded mainnet signer.
+  transfer fee, and a premium surface checked against Pyth.
 - **Meteora DBC** — solves market-based price discovery. FOBS needs
   deterministic execution against a known reference price. Different problem.
 - **Tessera** — plausible extension of the same social primitive, but a separate

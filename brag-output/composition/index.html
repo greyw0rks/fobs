@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      @font-face {
+        font-family: "Geist";
+        src: url("assets/fonts/Geist.woff2") format("woff2");
+        font-weight: 100 900;
+        font-display: block;
+      }
+      @font-face {
+        font-family: "GeistMono";
+        src: url("assets/fonts/GeistMono.woff2") format("woff2");
+        font-weight: 100 900;
+        font-display: block;
+      }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body {
+        width: 1920px; height: 1080px; overflow: hidden;
+        background: #f4f3ef;
+        font-family: "Geist", ui-sans-serif, system-ui, sans-serif;
+        color: #111312;
+      }
+      #root { width: 100%; height: 100%; position: relative; background: #f4f3ef; }
+      .scene { position: absolute; inset: 0; }
+      .scene-inner { position: absolute; inset: 0; }
+      .mono { font-family: "GeistMono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+
+      /* mesh */
+      .blob { position: absolute; border-radius: 9999px; filter: blur(120px); }
+      #blob-a { width: 720px; height: 720px; right: 2%; top: -180px; background: #dceafa; }
+      #blob-b { width: 520px; height: 520px; right: 14%; top: 160px; background: #e9ddf5; }
+      #blob-c { width: 560px; height: 560px; left: 4%; bottom: -200px; background: #f5ddd2; }
+
+      /* topbar */
+      .brandbar { position: absolute; top: 60px; left: 96px; right: 96px; display: flex; align-items: center; justify-content: space-between; }
+      .wordmark { font-size: 34px; font-weight: 700; letter-spacing: -0.05em; }
+      .pill { display: inline-flex; align-items: center; gap: 10px; background: #dceee5; color: #1a6b49; padding: 9px 18px; border-radius: 9999px; font-size: 19px; font-weight: 500; }
+      .dot { width: 10px; height: 10px; border-radius: 9999px; background: #23845b; display: inline-block; }
+
+      /* scene 1 */
+      .s1-wrap { position: absolute; left: 96px; top: 300px; max-width: 1180px; }
+      .eyebrow { font-size: 24px; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: #3175c6; margin-bottom: 30px; }
+      .hero { font-size: 132px; font-weight: 600; line-height: 0.94; letter-spacing: -0.065em; }
+      .sub1 { margin-top: 40px; font-size: 30px; line-height: 1.5; color: #6e6f69; max-width: 900px; }
+    </style>
+    <!-- STYLE-APPEND -->
+  </head>
+  <body>
+    <!-- BODY-APPEND -->
+  </body>
+</html>
