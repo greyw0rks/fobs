@@ -1,0 +1,9 @@
+/**
+ * Tailwind for the `/design` gallery only.
+ *
+ * We emit the utilities layer alone — no `@tailwind base` — so Tailwind's
+ * preflight reset never ships. `globals.css` already provides the base
+ * normalisation the frame components need. This file is imported once, from
+ * `app/design/layout.tsx`, so it loads on gallery routes only.
+ */
+@tailwind utilities;

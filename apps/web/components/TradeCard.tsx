@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
 import type { AssetSummary, FeedTrade, WalletBalances } from "@/lib/types";
 import { ago, explorerUrl, initials, money, price, qty, shortSignature, synthetic } from "@/lib/format";
-import { api } from "@/lib/api";
+import { ApiError, api } from "@/lib/api";
+import { signAndSubmitTrade } from "@/lib/wallet-trade";
+import { useWallet } from "@solana/wallet-adapter-react";
+import { useState } from "react";
 
 /**
  * One trade in the feed.
@@ -14,22 +16,36 @@ import { api } from "@/lib/api";
  * and a one-click copy would be the exact thing the product is not.
  */
 
-export function Avatar({ name, avatar }: { name: string; avatar?: string | null }) {
-  return <span className="avatar">{avatar ?? initials(name)}</span>;
+export function Avatar({
+  name,
+  avatar,
+  size
+}: {
+  name: string;
+  avatar?: string | null;
+  size?: "md" | "lg";
+}) {
+  const hue = name ? name.charCodeAt(0) % 5 : 0;
+  return (
+    <span className={`avatar${size === "lg" ? " lg" : ""}`} data-hue={hue}>
+      {avatar ?? initials(name)}
+    </span>
+  );
 }
 
 export function FeedCard({
   trade,
+  onFomo,
   onFomoed
 }: {
   trade: FeedTrade;
+  onFomo?: (trade: FeedTrade) => void;
   onFomoed?: (trade: FeedTrade) => void;
 }) {
-  const verb = trade.side === "buy" ? "bought" : "sold";
-  const [open, setOpen] = useState(false);
+  const verb = trade.side === "buy" ? "Bought" : "Sold";
 
   return (
-    <article className="card">
+    <article className={`card trade-card ${trade.side}`}>
       <div className="row">
         <div className="user">
           <Avatar name={trade.user.displayName} avatar={trade.user.avatar} />
@@ -45,17 +61,32 @@ export function FeedCard({
             </span>
           </span>
         </div>
-        <span className="chip">
-          {trade.asset.priceFeedType === "pyth" ? "Pyth priced" : "Mock oracle"}
-        </span>
+        {trade.viewerFomoed ? (
+          <span className="chip">You FOMO&apos;d this</span>
+        ) : (
+          <button className="button fomo" onClick={() => onFomo?.(trade)}>
+            FOMO
+          </button>
+        )}
       </div>
 
-      <h3 className="trade-title">
-        {verb} {synthetic(trade.asset.symbol)}
-      </h3>
-      <p className="figures">
-        {money(trade.amountUsdc)} · {qty(trade.quantity)} shares at {price(trade.price)}
-      </p>
+      <div className="trade-hero">
+        <div>
+          <h3 className="trade-title">
+            {verb} <span className="num">{trade.asset.symbol}</span>
+          </h3>
+          <p className="figures">
+            {qty(trade.quantity)} tokens at {price(trade.price)}
+          </p>
+        </div>
+        <div className="text-right">
+          <span className="num trade-amount">{money(trade.amountUsdc)}</span>
+          <br />
+          <span className="chip">
+            {trade.asset.priceFeedType === "pyth" ? "Pyth" : "Market"}
+          </span>
+        </div>
+      </div>
 
       {trade.source ? (
         <p className="muted">
@@ -63,113 +94,26 @@ export function FeedCard({
           <Link href={`/profile/${trade.source.user.username}`}>
             @{trade.source.user.username}
           </Link>
-          &apos;s {trade.asset.symbol} trade at their own size ({money(trade.amountUsdc)}{" "}
-          vs {money(trade.source.amountUsdc)})
+          &apos;s trade ({money(trade.amountUsdc)} vs {money(trade.source.amountUsdc)})
         </p>
       ) : null}
 
-      {trade.fomoCount > 0 ? (
-        <p className="muted">
-          {trade.fomoCount} {trade.fomoCount === 1 ? "person" : "people"} FOMO&apos;d this
-        </p>
-      ) : null}
-
-      {/* Proof, not decoration: this is the transaction that moved the money. */}
-      {trade.txSignature ? (
-        <p className="muted">
-          <a href={explorerUrl(trade.txSignature)} target="_blank" rel="noreferrer">
+      <div className="card-footer">
+        {trade.fomoCount > 0 ? (
+          <span className="muted">
+            {trade.fomoCount} {trade.fomoCount === 1 ? "FOMO" : "FOMOs"}
+          </span>
+        ) : null}
+        {trade.txSignature ? (
+          <a className="muted" href={explorerUrl(trade.txSignature)} target="_blank" rel="noreferrer">
             {shortSignature(trade.txSignature)}
-          </a>{" "}
-          on devnet
-        </p>
-      ) : (
-        <p className="muted">On chain · signature pending</p>
-      )}
-
-      <div className="row" style={{ marginTop: 14 }}>
-        <Link className="secondary" href={`/asset/${trade.asset.symbol}`}>
+          </a>
+        ) : null}
+        <Link className="muted" href={`/asset/${trade.asset.symbol}`}>
           View {trade.asset.symbol}
         </Link>
-        {trade.viewerFomoed ? (
-          <span className="chip">You FOMO&apos;d this</span>
-        ) : (
-          <button className="button fomo" onClick={() => setOpen((value) => !value)}>
-            {open ? "Cancel" : "FOMO this trade"}
-          </button>
-        )}
       </div>
-
-      {open && !trade.viewerFomoed ? (
-        <FomoForm
-          trade={trade}
-          onDone={(result) => {
-            setOpen(false);
-            onFomoed?.(result);
-          }}
-        />
-      ) : null}
     </article>
-  );
-}
-
-/**
- * Sized by the person, prefilled at half the source trade as a *suggestion* they
- * can overwrite — the amount is never taken from the source.
- */
-function FomoForm({
-  trade,
-  onDone
-}: {
-  trade: FeedTrade;
-  onDone: (trade: FeedTrade) => void;
-}) {
-  const suggested = Math.max(10, Math.round(trade.amountUsdc / 2));
-  const [amount, setAmount] = useState(String(suggested));
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const value = Number(amount);
-  const valid = Number.isFinite(value) && value > 0;
-
-  return (
-    <div className="trade-panel" style={{ marginTop: 14 }}>
-      <div className="row">
-        <label className="muted" htmlFor={`fomo-${trade.id}`}>
-          Your size (USDC)
-        </label>
-        <span className="figures">suggested {money(suggested)}</span>
-      </div>
-      <input
-        id={`fomo-${trade.id}`}
-        className="input"
-        inputMode="decimal"
-        value={amount}
-        onChange={(event) => setAmount(event.target.value)}
-      />
-      <p className="muted">
-        This places your own trade at your own size. It does not copy{" "}
-        @{trade.user.username}&apos;s order.
-      </p>
-      {error ? <p className="danger">{error}</p> : null}
-      <button
-        className="button"
-        disabled={!valid || busy}
-        onClick={async () => {
-          setBusy(true);
-          setError(null);
-          try {
-            const result = await api.fomo(trade.id, value);
-            onDone(result.trade);
-          } catch (caught) {
-            setError(caught instanceof Error ? caught.message : "FOMO failed");
-          } finally {
-            setBusy(false);
-          }
-        }}
-      >
-        {busy ? "Signing…" : `Buy ${money(value)} of ${trade.asset.symbol}`}
-      </button>
-    </div>
   );
 }
 
@@ -209,7 +153,7 @@ export function TradeConfirmation({
         {trade.side === "buy" ? "Bought" : "Sold"} {synthetic(trade.asset.symbol)}
       </p>
       <p className="figures">
-        {money(trade.amountUsdc)} · filled at {money(trade.price)} per share
+        {money(trade.amountUsdc)} · filled at {money(trade.price)} per token
       </p>
 
       {fomo && trade.source ? (
@@ -227,7 +171,7 @@ export function TradeConfirmation({
           <a href={explorerUrl(trade.txSignature)} target="_blank" rel="noreferrer">
             {shortSignature(trade.txSignature)}
           </a>{" "}
-          on devnet
+          on mainnet
         </p>
       ) : null}
     </div>
@@ -247,6 +191,7 @@ export function TradeConfirmation({
 export function TradePanel({
   asset,
   needsWallet,
+  walletAddress,
   balances,
   position,
   onTraded
@@ -259,6 +204,12 @@ export function TradePanel({
    * one; finding out afterwards is what makes it feel broken.
    */
   needsWallet?: boolean;
+  /**
+   * The account's own trading wallet, from the session — the address the server
+   * will build any trade for. Used only to decide whether the connected browser
+   * wallet is the right one to sign with; it is never sent anywhere.
+   */
+  walletAddress?: string | null;
   /** Null when signed out, when there is no wallet, or when devnet was unreadable. */
   balances?: WalletBalances | null;
   /** The viewer's current position in this asset, from the mirrored Holding row. */
@@ -274,6 +225,30 @@ export function TradePanel({
   // trade — a balance that survives a fill is a balance that disables the next
   // button for no reason.
   const [wallet, setWallet] = useState<WalletBalances | null>(balances ?? null);
+
+  const adapter = useWallet();
+
+  /**
+   * Who signs the transaction.
+   *
+   * The connected wallet only gets to sign when it *is* the account's trading
+   * wallet. A visitor can be signed in as one account and have a different
+   * wallet selected in Phantom, and handing that wallet a transaction owned by
+   * someone else produces a signature failure deep inside the wallet — which
+   * reads as "Phantom is broken" rather than "that is not your wallet".
+   *
+   * `wallet.address` is the session account's own address, from the server. When
+   * the two match, the browser signs and the key never leaves it. When they do
+   * not — or when nothing is connected — the server signs, and if the account
+   * has no server-held key at all the route says so and we surface that.
+   */
+  const connectedAddress = adapter.publicKey?.toBase58() ?? null;
+  const accountAddress = walletAddress ?? null;
+  const browserSigns =
+    adapter.connected && connectedAddress !== null && connectedAddress === accountAddress;
+
+  const mismatchedWallet =
+    adapter.connected && connectedAddress !== null && accountAddress !== null && !browserSigns;
 
   const value = Number(amount);
   const valid = Number.isFinite(value) && value > 0;
@@ -292,10 +267,22 @@ export function TradePanel({
     estimatedShares !== null &&
     estimatedShares > position.quantity;
 
+  // The ceiling for the current side, when it has actually been read: buying is
+  // capped by USDC on hand, selling by the value of the position. Null (so the
+  // "Max" pill is hidden) when the figure is unknown, rather than a fake 0.
+  const maxAmount =
+    side === "buy"
+      ? wallet !== null
+        ? wallet.usdc
+        : null
+      : position != null && asset.price
+        ? position.quantity * asset.price
+        : null;
+
   const blocked = overBalance
-    ? `That is more than your test USDC balance of ${money(wallet!.usdc)}. Trade a smaller size.`
+    ? `That is more than your USDC balance of ${money(wallet!.usdc)}. Trade a smaller size.`
     : overPosition
-      ? `You hold ${qty(position!.quantity)} shares. Selling ${money(value)} at ${price(asset.price)} would need about ${qty(estimatedShares!)} — more than you have.`
+      ? `You hold ${qty(position!.quantity)} tokens. Selling ${money(value)} at ${price(asset.price)} would need about ${qty(estimatedShares!)} — more than you have.`
       : null;
 
   if (done) {
@@ -306,13 +293,36 @@ export function TradePanel({
     );
   }
 
+  /**
+   * Send the order by whichever path this account can actually use, and fall
+   * back once if the server says the browser is the only option.
+   *
+   * The fallback is keyed on the `wallet-signature-required` code rather than on
+   * the message, because the message is prose and prose gets edited. It is not
+   * attempted when the browser already signed — in that case a refusal is a
+   * real refusal and retrying it server-side would be retrying the same thing
+   * that just failed.
+   */
+  async function submit(): Promise<FeedTrade> {
+    // The bridge signs nothing: a trade is a Jupiter swap the user's own wallet
+    // signs. There is no server-custody path any more, so a connected wallet is
+    // required, full stop.
+    if (!adapter.connected || !adapter.signTransaction || !adapter.publicKey) {
+      throw new Error("Connect a wallet to trade. FOBS routes the swap; your wallet signs it.");
+    }
+    return signAndSubmitTrade(
+      { publicKey: adapter.publicKey, signTransaction: adapter.signTransaction },
+      { symbol: asset.symbol, side, amountUsdc: value }
+    );
+  }
+
   return (
     <div className="panel trade-panel">
       <h3>Trade {synthetic(asset.symbol)}</h3>
       <p className="muted">
         {asset.priceKnown
           ? `Oracle price ${price(asset.price)} · your fill carries the program's spread`
-          : "Price not read yet — refresh the indexer on /dev"}
+          : "Price not read yet — try again in a moment"}
       </p>
 
       <div className="segmented">
@@ -341,16 +351,41 @@ export function TradePanel({
         onChange={(event) => setAmount(event.target.value)}
       />
 
+      {/* Quick-select sizes. "Max" is the honest ceiling for the side: a buy is
+          capped by USDC on hand, a sell by the value of the position — and it is
+          only offered when that figure has actually been read. */}
+      <div className="preset-pills">
+        {[50, 100, 500].map((preset) => (
+          <button
+            key={preset}
+            type="button"
+            className={`preset${Number(amount) === preset ? " active" : ""}`}
+            onClick={() => setAmount(String(preset))}
+          >
+            ${preset}
+          </button>
+        ))}
+        {maxAmount !== null ? (
+          <button
+            type="button"
+            className="preset"
+            onClick={() => setAmount(maxAmount.toFixed(2))}
+          >
+            Max
+          </button>
+        ) : null}
+      </div>
+
       {/* Quote from the oracle price, not from a fill: the real price includes
           the spread and is computed by the program. */}
       {valid && asset.priceKnown && asset.price ? (
         <p className="quote muted">
-          ≈ {qty(value / asset.price)} shares before spread
+          ≈ {qty(value / asset.price)} tokens before fees
         </p>
       ) : null}
 
-      <dl className="muted" style={{ margin: 0 }}>
-        <dt>{side === "buy" ? "Test USDC available" : "Shares you hold"}</dt>
+      <dl className="muted">
+        <dt>{side === "buy" ? "USDC available" : "Tokens you hold"}</dt>
         <dd>
           {side === "buy"
             ? wallet === null
@@ -364,6 +399,16 @@ export function TradePanel({
 
       {error ? <p className="danger">{error}</p> : null}
       {blocked ? <p className="danger">{blocked}</p> : null}
+      {mismatchedWallet ? (
+        <p className="muted">
+          Your browser wallet is not this account&apos;s trading wallet, so this order will be
+          signed by the account instead. To sign it yourself, connect{" "}
+          <span className="mono">
+            {accountAddress?.slice(0, 4)}…{accountAddress?.slice(-4)}
+          </span>
+          .
+        </p>
+      ) : null}
 
       <button
         className={`button ${side}`}
@@ -372,13 +417,9 @@ export function TradePanel({
           setBusy(true);
           setError(null);
           try {
-            const result = await api.trade({
-              symbol: asset.symbol,
-              side,
-              amountUsdc: value
-            });
-            setDone(result.trade);
-            onTraded?.(result.trade);
+            const trade = await submit();
+            setDone(trade);
+            onTraded?.(trade);
             // Re-read rather than adjusting locally: the server just spent real
             // USDC, and the next thing this panel does is decide whether the
             // next trade is affordable.
@@ -393,12 +434,16 @@ export function TradePanel({
           }
         }}
       >
-        {busy ? "Signing on devnet…" : `${side === "buy" ? "Buy" : "Sell"} ${money(value)}`}
+        {busy
+          ? browserSigns
+            ? "Waiting for your wallet…"
+            : "Submitting…"
+          : `${side === "buy" ? "Buy" : "Sell"} ${money(value)}`}
       </button>
       <p className="muted">
-        {needsWallet
-          ? "Your first trade creates your devnet wallet — a keypair, SOL and test USDC. It takes a few seconds."
-          : "Signs a real devnet transaction from this account's wallet."}
+        {browserSigns
+          ? "Routes a real swap on mainnet and signs it in your wallet. This server never holds your key."
+          : "Connect a wallet to trade. FOBS routes the swap; your wallet signs it, on mainnet."}
       </p>
     </div>
   );

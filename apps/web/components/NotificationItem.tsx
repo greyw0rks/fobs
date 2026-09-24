@@ -42,7 +42,7 @@ function sentence(notification: NotificationView) {
     case "TRADE_CONFIRMED":
       return (
         <>
-          Your {amount} {asset ?? ""} trade confirmed on devnet
+          Your {amount} {asset ?? ""} trade confirmed on mainnet
         </>
       );
     case "FOLLOW":
@@ -50,6 +50,14 @@ function sentence(notification: NotificationView) {
   }
 }
 
+/**
+ * The activity list.
+ *
+ * A timeline inside one panel rather than a stack of cards. Each notification
+ * is a line in a log — one avatar, one sentence, one timestamp — and giving
+ * each its own elevated card made ten events read as ten separate objects
+ * instead of one stream.
+ */
 export function NotificationItem({
   initial,
   unread
@@ -62,50 +70,58 @@ export function NotificationItem({
     unread
   });
 
+  const remaining = notifications.filter((item) => !item.read).length;
+
   return (
     <>
-      <div className="row" style={{ marginBottom: 12 }}>
-        <span className="muted">
-          {notifications.filter((item) => !item.read).length} unread
+      <div className="flex items-center justify-between border-b border-[#efeee9] px-1 pb-3">
+        <span className="text-xs text-[#777872]">
+          <span className="font-semibold text-[#111312] tabular-nums">{remaining}</span> unread
         </span>
-        <span className="row">
+        <span className="flex items-center gap-2">
           <LiveDot connected={connected} />
-          <button
-            className="secondary"
-            onClick={async () => {
-              await api.markNotificationsRead();
-              const next = await api.notifications();
-              setState(next);
-            }}
-          >
-            Mark all read
-          </button>
+          {remaining > 0 ? (
+            <button
+              className="rounded-lg border border-[#e3e2dc] bg-white px-3 py-1.5 text-[11px] font-medium text-[#111312] transition-colors hover:bg-[#f2f1ec]"
+              onClick={async () => {
+                await api.markNotificationsRead();
+                const next = await api.notifications();
+                setState(next);
+              }}
+            >
+              Mark all read
+            </button>
+          ) : null}
         </span>
       </div>
 
-      {notifications.map((notification) => (
-        <article className="card" key={notification.id}>
-          <div className="row">
-            <div className="user">
+      <div className="mt-3">
+        <div className="flex flex-col">
+          {notifications.map((notification) => (
+            <Link
+              className={`flex items-center gap-3 rounded-lg px-2 py-3 transition-colors hover:bg-[#f2f1ec]${notification.read ? "" : " bg-[#f7f6f2]"}`}
+              key={notification.id}
+              href={notification.href}
+            >
               <Avatar
                 name={notification.actor?.displayName ?? "FOBS"}
                 avatar={notification.actor?.avatar ?? null}
               />
-              <span>
-                <span>{sentence(notification)}</span>
-                <br />
-                <span className="muted">{ago(notification.createdAt)}</span>
+
+              <span className="flex min-w-0 flex-1 flex-col">
+                <span className="text-sm text-[#111312]">{sentence(notification)}</span>
+                <span className="mt-0.5 text-[11px] text-[#9b9c95]">{ago(notification.createdAt)}</span>
               </span>
-            </div>
-            {!notification.read ? <span className="chip">New</span> : null}
-          </div>
-          <p style={{ marginTop: 10 }}>
-            <Link className="secondary" href={notification.href}>
-              Open
+
+              {!notification.read ? (
+                <span className="rounded-full bg-[#dceafa] px-2 py-0.5 text-[10px] font-medium text-[#3175c6]">
+                  New
+                </span>
+              ) : null}
             </Link>
-          </p>
-        </article>
-      ))}
+          ))}
+        </div>
+      </div>
     </>
   );
 }

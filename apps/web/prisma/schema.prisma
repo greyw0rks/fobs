@@ -36,6 +36,18 @@ enum PriceFeedType {
   mock
 }
 
+/// Where a wallet came from, which decides whether this server can sign for it.
+///
+/// `custody` is a keypair this deployment generated and holds (devnet only, see
+/// `lib/server/custody.ts`). `external` is a wallet the user brought — Phantom,
+/// Solflare, anything — for which the server holds nothing and never signs. The
+/// distinction is load-bearing: `signerForUser` refuses an `external` wallet
+/// rather than pretending it can sign.
+enum WalletSource {
+  custody
+  external
+}
+
 /// Why a notification exists. The message text is NOT stored — it is rendered
 /// from the type plus the actor and asset it points at, so wording changes do
 /// not require a migration and a notification can never disagree with the trade
@@ -50,34 +62,93 @@ enum NotificationType {
 model User {
   id            String    @id @default(cuid())
   xUserId       String?   @unique
+  /// Google's `sub` claim. Null for anyone who arrived another way.
+  googleId      String?   @unique
   username      String    @unique
   displayName   String
   avatar        String?
-  /// Null until onboarding connects a wallet. A user exists from the moment X
-  /// authenticates them, which is before they have a wallet.
-  walletAddress String?   @unique
-  /// The user's devnet keypair, sealed with AES-256-GCM (`lib/server/custody.ts`).
+  /// The user's *primary* wallet, mirrored from `Wallet.isPrimary`.
   ///
-  /// This is the one column in the schema holding a secret, and it exists only
-  /// because this is a devnet test environment: the alternative — a browser
-  /// wallet adapter — is what a product holding anything of value must use.
-  /// Sealed rather than plaintext so that a database dump is not also a set of
-  /// signing keys, and never returned by any query that leaves the server.
-  walletSecret  String?
-  /// Seeded test accounts (alice, bob, charlie, grey). Their keys are held by
-  /// the server so the /dev harness can sign real devnet trades as them. Never
-  /// true for a user who arrived through authentication.
-  isTestUser    Boolean   @default(false)
+  /// Null until onboarding connects a wallet. A user exists from the moment an
+  /// identity provider authenticates them, which is before they have a wallet.
+  /// Kept on the user as well as in `Wallet` because it is read on nearly every
+  /// request, while `Wallet` is what the indexer resolves an address through —
+  /// a user may trade from more than one wallet, but only one is the primary.
+  walletAddress String?   @unique
   onboardedAt   DateTime?
+  /// A short self-description shown on the profile. Null until the owner writes
+  /// one; there is no fabricated placeholder.
+  bio           String?
+  /// The owner's external links, as a JSON-encoded array of `{ label, url }`.
+  /// Stored as text rather than `Json` on purpose: the column is then identical
+  /// on the sqlite dev schema and the postgres prod schema, and the shape is
+  /// validated in the API before it is written, not by the database.
+  links         String?
   createdAt     DateTime  @default(now())
 
   trades        Trade[]
   holdings      Holding[]
+  wallets       Wallet[]
   following     Follow[]         @relation("follower")
   followers     Follow[]         @relation("following")
   notifications Notification[]   @relation("recipient")
   actorIn       Notification[]   @relation("actor")
   sessions      Session[]
+}
+
+/// Every address a user trades from.
+///
+/// This exists because `User.walletAddress` can only name one wallet, and the
+/// indexer has to attribute a receipt to the user who signed it. A user who
+/// signs in with X and later links Phantom has two addresses; both are theirs,
+/// and a trade from either must land in their feed.
+model Wallet {
+  id        String       @id @default(cuid())
+  address   String       @unique
+  userId    String
+  source    WalletSource
+  /// The address shown in the UI and used for a custody-signed trade. Exactly
+  /// one per user.
+  isPrimary Boolean      @default(false)
+  /// Human label for a linked wallet — "Phantom", "Backpack". Null for custody.
+  label     String?
+  createdAt DateTime     @default(now())
+
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+/// A single-use challenge for a wallet signature.
+///
+/// Wallets sign a message, not a transaction, so the server has to hand out
+/// something worth signing and remember it. The *message* is stored rather than
+/// rebuilt on verify: a message reconstructed even slightly differently — a
+/// timestamp, a whitespace, a host — fails verification for a reason that is
+/// impossible to see from the error, and storing it removes that class of bug
+/// entirely.
+model AuthNonce {
+  nonce     String    @id
+  message   String
+  /// The address the challenge was issued for. The signature check would
+  /// already refuse a signature by any other key, so this is not what makes it
+  /// safe — it is what makes a mismatch say "you asked for a challenge for a
+  /// different address" instead of "invalid signature", which is the difference
+  /// between a debuggable failure and a mysterious one.
+  address   String?
+  /// "sign-in" creates or resumes a session; "link" attaches an address to the
+  /// account that is already signed in.
+  purpose   String
+  /// Set for `link`, so a nonce issued for one account cannot be redeemed on
+  /// another.
+  userId    String?
+  expiresAt DateTime
+  /// Marked rather than deleted, so a replayed nonce is distinguishable from an
+  /// invented one.
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([expiresAt])
 }
 
 model Session {
@@ -101,14 +172,18 @@ model Asset {
   /// The asset's id in the program. Every PDA for this asset derives from it:
   /// asset = [b"asset", u16le(onchainId)], and vault/mint/oracle from the asset
   /// key. Storing it is what lets the app rebuild any address without guessing.
-  onchainId     Int           @unique
+  /// Bridged assets have no program PDAs, so the synthetic-only addresses below
+  /// are nullable now. `mintAddress` is the real, live mint and stays required.
+  onchainId     Int?          @unique
+  /// xstock | prestock | ondo for a bridged asset; null for a legacy synthetic.
+  kind          String?
   /// The Asset account itself, `[b"asset", u16le(onchainId)]`. This is what a
   /// TradeReceipt stores in its `asset` field, so it is the join key between a
   /// receipt read off the chain and the row here. Every other address below is
   /// derived from this one.
-  assetAddress  String        @unique
+  assetAddress  String?       @unique
   mintAddress   String        @unique
-  vaultAddress  String        @unique
+  vaultAddress  String?       @unique
   oracleAddress String?
   /// How many of this asset's trades the indexer has already ingested. Lives
   /// here rather than in a separate cursor table so it advances in the same
@@ -117,13 +192,26 @@ model Asset {
   indexedTrades Int           @default(0)
   /// Which source is live right now. All five assets are `mock` on devnet
   /// because no Pyth US-equity feed is published there (verified 2026-09-18).
-  priceFeedType PriceFeedType
+  /// Nullable now: a bridged asset prices from its live Jupiter route and Pyth
+  /// reference, not from a program oracle account, so it has no feed *type*.
+  priceFeedType PriceFeedType?
   /// Verified Pyth feed id, stored even when priceFeedType is `mock` so the
   /// mainnet switch is config, not a migration. See docs/PYTH_VERIFICATION.md.
   pythFeedId    String?
   /// Last price the indexer read from the chain, in USD. A cache, never an
   /// input: the program prices trades from the oracle account, not from here.
   cachedPrice   Decimal?      @db.Decimal(20, 6)
+  /// When the oracle's value last **changed**, read from the oracle account's
+  /// own `updated_at`. Published alongside the price so the UI can say how old
+  /// the number it is rendering is — a price with no age looks current whether
+  /// or not it is.
+  ///
+  /// It means "last changed" rather than "last written" because `push-prices.ts`
+  /// skips a price the oracle already holds: a closed market prints one number
+  /// all night and re-writing it would spend SOL to change nothing. So the age
+  /// of this timestamp is the age of the last real market move — which is
+  /// exactly the number worth showing.
+  priceUpdatedAt DateTime?
   decimals      Int           @default(6)
   createdAt     DateTime      @default(now())
 

@@ -125,9 +125,17 @@ async function main() {
         // The server holds these keys so the /dev harness can sign real trades
         // as them. Never true for a user who arrived through authentication.
         isTestUser: true,
+        // And they are the room every new account is furnished with: the
+        // activity loop trades as them, and `followSeedTraders` makes every new
+        // signup follow all of them. Set here rather than inferred from
+        // `isTestUser`, because "we can sign for them" and "they are worth
+        // following" are different claims — see the note on the field.
+        isSeedTrader: true,
         onboardedAt: new Date()
       },
-      update: { walletAddress: user.wallet }
+      // Both flags on update, so re-seeding after adding traders to the list
+      // converges an existing database rather than only fixing new rows.
+      update: { walletAddress: user.wallet, isTestUser: true, isSeedTrader: true }
     });
     console.log(`user   ${username.padEnd(8)} ${user.wallet}`);
   }

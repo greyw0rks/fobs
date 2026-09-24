@@ -12,8 +12,6 @@
     "db:dev": "node scripts/dev-schema.mjs && DATABASE_URL=file:./dev.db pnpm --dir apps/web exec prisma db push --schema=prisma/schema.dev.prisma",
     "db:dev:reset": "node scripts/dev-schema.mjs && DATABASE_URL=file:./dev.db pnpm --dir apps/web exec prisma db push --schema=prisma/schema.dev.prisma --force-reset",
     "seed:db": "DATABASE_URL=file:./dev.db tsx scripts/seed-db.ts",
-    "db:verify": "pnpm --dir apps/web verify:db",
-    "db:verify:dev": "DATABASE_URL=file:./dev.db pnpm --dir apps/web verify:db",
     "build:program": "bash scripts/build-program.sh",
     "anchor:build": "anchor build",
     "anchor:test": "anchor test --skip-build",
@@ -26,9 +24,7 @@
     "idl": "node scripts/build-idl.mjs",
     "idl:types": "anchor idl type target/idl/fomo.json -o target/types/fomo.ts",
     "verify:pyth": "tsx scripts/verify-pyth-feeds.ts",
-    "smoke:loop": "pnpm --dir apps/web smoke:loop",
-    "smoke:onboard": "pnpm --dir apps/web smoke:onboard",
-    "rehearse": "pnpm --dir apps/web rehearse"
+    "backfill": "DATABASE_URL=file:./dev.db pnpm --dir apps/web backfill"
   },
   "devDependencies": {
     "@coral-xyz/anchor": "^0.30.1",

@@ -1,5 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { priceHistory } from "@/lib/server/price-history";
+import { parseProfileLinks } from "@/lib/profile-links";
 import type {
   AssetSummary,
   FeedTrade,
@@ -50,6 +52,7 @@ const tradeInclude = {
       symbol: true,
       name: true,
       cachedPrice: true,
+      priceUpdatedAt: true,
       priceFeedType: true,
       pythFeedId: true
     }
@@ -78,6 +81,7 @@ type RawTrade = {
     symbol: string;
     name: string;
     cachedPrice: unknown;
+    priceUpdatedAt: Date | null;
     priceFeedType: string;
     pythFeedId: string | null;
   };
@@ -110,9 +114,10 @@ function toFeedTrade(
       symbol: trade.asset.symbol,
       name: trade.asset.name,
       price: trade.asset.cachedPrice === null ? null : num(trade.asset.cachedPrice),
-      priceFeedType: trade.asset.priceFeedType === "pyth" ? "pyth" : "mock",
+      priceFeedType: trade.asset.priceFeedType === "pyth" ? "pyth" : "market",
       pythFeedId: trade.asset.pythFeedId,
-      priceKnown: trade.asset.cachedPrice !== null
+      priceKnown: trade.asset.cachedPrice !== null,
+      priceUpdatedAt: trade.asset.priceUpdatedAt?.toISOString() ?? null
     },
     fomoCount,
     viewerFomoed,
@@ -238,7 +243,8 @@ export async function getTrade(
 
 export async function listAssets(): Promise<AssetSummary[]> {
   const assets = await prisma.asset.findMany({
-    orderBy: { onchainId: "asc" },
+    // Bridged assets have no `onchainId`, so order by symbol for a stable list.
+    orderBy: { symbol: "asc" },
     include: { _count: { select: { trades: true } } }
   });
 
@@ -259,9 +265,11 @@ export async function listAssets(): Promise<AssetSummary[]> {
     symbol: asset.symbol,
     name: asset.name,
     price: asset.cachedPrice === null ? null : num(asset.cachedPrice),
-    priceFeedType: asset.priceFeedType === "pyth" ? "pyth" : "mock",
+    priceFeedType: asset.priceFeedType === "pyth" ? "pyth" : "market",
     pythFeedId: asset.pythFeedId,
     priceKnown: asset.cachedPrice !== null,
+    priceUpdatedAt: asset.priceUpdatedAt?.toISOString() ?? null,
+    kind: asset.kind,
     onchainId: asset.onchainId,
     assetAddress: asset.assetAddress,
     mintAddress: asset.mintAddress,
@@ -385,9 +393,10 @@ export async function getPortfolio(userId: string): Promise<PortfolioView> {
         price,
         priceFeedType: (row.asset.priceFeedType === "pyth"
           ? "pyth"
-          : "mock") as PriceFeedType,
+          : "market") as PriceFeedType,
         pythFeedId: row.asset.pythFeedId,
-        priceKnown: price !== null
+        priceKnown: price !== null,
+        priceUpdatedAt: row.asset.priceUpdatedAt?.toISOString() ?? null
       }
     };
   });
@@ -421,6 +430,83 @@ export async function getPortfolio(userId: string): Promise<PortfolioView> {
       unrealizedPnl === null || !totalCost ? null : (unrealizedPnl / totalCost) * 100,
     unpricedCount: open.length - valued.length
   };
+}
+
+/**
+ * A real portfolio value-over-time series for the performance chart.
+ *
+ * Reconstructed, not invented: for each day in the union of the held assets'
+ * public price histories, the quantity the user held on that day is replayed
+ * from their trade history (buys add, sells subtract), and valued at that day's
+ * close. A day where nothing priced contributes nothing — the same honesty rule
+ * as the portfolio total. Returns [] when there is no trade or no history to
+ * reconstruct from, and the chart shows the current value without a line.
+ */
+export async function portfolioHistory(
+  userId: string
+): Promise<{ label: string; value: number }[]> {
+  const trades = await prisma.trade.findMany({
+    where: { userId },
+    orderBy: { tradedAt: "asc" },
+    select: {
+      side: true,
+      quantity: true,
+      tradedAt: true,
+      asset: { select: { symbol: true } }
+    }
+  });
+  if (trades.length === 0) return [];
+
+  const symbols = [...new Set(trades.map((t) => t.asset.symbol))];
+  const histories = await Promise.all(
+    symbols.map(async (symbol) => [symbol, await priceHistory(symbol)] as const)
+  );
+  const seriesBySymbol = new Map(histories);
+
+  // The union of all price-history dates, ascending, from the first trade on.
+  const firstTrade = trades[0].tradedAt.getTime();
+  const dates = [
+    ...new Set(
+      histories.flatMap(([, points]) => points.map((p) => p.at)).filter((at) => at >= firstTrade)
+    )
+  ].sort((a, b) => a - b);
+  if (dates.length < 2) return [];
+
+  const priceAt = (symbol: string, at: number): number | null => {
+    const points = seriesBySymbol.get(symbol) ?? [];
+    let value: number | null = null;
+    for (const point of points) {
+      if (point.at <= at) value = point.price;
+      else break;
+    }
+    return value;
+  };
+
+  const qtyAt = (symbol: string, at: number): number =>
+    trades
+      .filter((t) => t.asset.symbol === symbol && t.tradedAt.getTime() <= at)
+      .reduce((sum, t) => sum + (t.side === "buy" ? 1 : -1) * num(t.quantity), 0);
+
+  const out: { label: string; value: number }[] = [];
+  for (const at of dates) {
+    let value = 0;
+    let priced = false;
+    for (const symbol of symbols) {
+      const quantity = qtyAt(symbol, at);
+      if (quantity <= 0) continue;
+      const price = priceAt(symbol, at);
+      if (price === null) continue;
+      value += quantity * price;
+      priced = true;
+    }
+    if (!priced) continue;
+    out.push({
+      label: new Date(at).toLocaleDateString(undefined, { month: "short", day: "numeric" }),
+      value: Math.round(value * 100) / 100
+    });
+  }
+
+  return out.length >= 2 ? out : [];
 }
 
 /**
@@ -490,6 +576,11 @@ export async function unreadNotificationCount(userId: string): Promise<number> {
   return prisma.notification.count({ where: { userId, readAt: null } });
 }
 
+/** How many accounts this user follows — the "Following" metric on the feed. */
+export async function followingCount(userId: string): Promise<number> {
+  return prisma.follow.count({ where: { followerId: userId } });
+}
+
 export async function getProfile(
   username: string,
   viewerId: string | null
@@ -503,6 +594,12 @@ export async function getProfile(
       avatar: true,
       walletAddress: true,
       createdAt: true,
+      bio: true,
+      links: true,
+      // Whether, not which: the profile surfaces that an identity is connected,
+      // never the provider id itself.
+      xUserId: true,
+      googleId: true,
       _count: { select: { followers: true, following: true } }
     }
   });
@@ -528,7 +625,11 @@ export async function getProfile(
       displayName: user.displayName,
       avatar: user.avatar,
       walletAddress: user.walletAddress,
-      createdAt: user.createdAt.toISOString()
+      createdAt: user.createdAt.toISOString(),
+      bio: user.bio,
+      links: parseProfileLinks(user.links),
+      hasX: user.xUserId != null,
+      hasGoogle: user.googleId != null
     },
     followers: user._count.followers,
     following: user._count.following,

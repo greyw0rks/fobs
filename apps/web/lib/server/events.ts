@@ -42,15 +42,7 @@ export type NotificationEvent = {
   createdAt: string;
 };
 
-/** Emitted when an indexing pass finishes, so /dev can show what happened. */
-export type IndexerEvent = {
-  type: "indexer";
-  assets: number;
-  tradesIngested: number;
-  at: string;
-};
-
-export type FobsEvent = TradeEvent | NotificationEvent | IndexerEvent;
+export type FobsEvent = TradeEvent | NotificationEvent;
 
 type Listener = (event: FobsEvent) => void;
 
@@ -71,8 +63,8 @@ const globalForEvents = globalThis as unknown as {
 const listeners: Set<Listener> = (globalForEvents.fobsEventBus ??= new Set<Listener>());
 
 /**
- * The last few events, so a client that connects mid-demo can show recent
- * history instead of an empty log. Bounded — this is a demo affordance, not a
+ * The last few events, so a client that connects mid-session can show recent
+ * history instead of an empty log. Bounded — this is a convenience, not a
  * durable queue, and an unbounded one would leak for the life of the process.
  */
 const RECENT_LIMIT = 50;

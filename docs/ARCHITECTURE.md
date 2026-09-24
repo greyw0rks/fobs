@@ -24,7 +24,7 @@ X identity → social feed → Alice's trade → FOMO → Solana transaction
 
 | Layer            | Owns                                                              |
 | ---------------- | ----------------------------------------------------------------- |
-| X                | Identity and the social graph. Nothing else.                     |
+| X / Google / wallet | Identity and the social graph. Nothing else.                   |
 | Postgres         | Feed, follows, profiles, notifications, FOMO events.             |
 | Solana           | Assets, vaults, holdings, receipts. Only what must be verifiable. |
 | Pyth / MockOracle | Price input. Per-asset, chosen from measurement.                 |
@@ -75,8 +75,16 @@ The trading instruction does not branch on source. Each asset declares its own.
 registration argument rather than a program change. Full numbers and method:
 [PYTH_VERIFICATION.md](./PYTH_VERIFICATION.md).
 
-The UI labels the active source per asset. A days-old price under a "Pyth" badge
-would be the exact disclosure failure this product is defined against.
+`Mock` names *who may write* the account — the protocol admin — not what is in
+it. On devnet the operator pushes a live Yahoo Finance quote into it every ~30
+seconds (`lib/server/push-prices.ts`), so the number the UI renders is a real
+market price, published with its own `regularMarketTime` and labelled with its
+age. `set_mock_price` is exempt from the 90s staleness check by construction,
+because that check exists to reject a stale *Pyth* account and this account can
+only be written by the admin.
+
+That exemption is the whole reason this works without a program change, and it is
+also the thing to re-examine first if the price input ever moves to mainnet.
 
 ## Onchain model
 
@@ -138,8 +146,13 @@ These are separate products or separate integration tracks, and building them
 before the core loop works would have been the main risk to shipping:
 
 - **Portfolio-FOMO** — requires the custody machinery described above. Cut.
-- **PreStocks** — its rules conflict with a synthetic-asset universe, so it
-  would need its own asset universe rather than being jammed into this one.
+- **PreStocks trading** — its exclusivity rules cover pre-IPO tokens, so the app
+  does not *issue* competing synthetics. It does read PreStocks' market as a
+  separate mainnet surface (`/prestocks`): scaled Token-2022 supply, epoch-based
+  transfer fee, and a premium surface checked against Pyth. Read-only, no
+  signature — see the cluster decision in [BOUNTY_PLAN.md](BOUNTY_PLAN.md). What
+  is *not* built is routing an order, because this app's wallets are devnet and a
+  mainnet swap needs a funded mainnet signer.
 - **Meteora DBC** — solves market-based price discovery. FOBS needs
   deterministic execution against a known reference price. Different problem.
 - **Tessera** — plausible extension of the same social primitive, but a separate

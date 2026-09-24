@@ -1,5 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import { cookies } from "next/headers";
+import { decodeIntent, encodeIntent, type OAuthIntent } from "./oauth-intent";
 
 /**
  * X (Twitter) OAuth 2.0 with PKCE.
@@ -24,6 +25,7 @@ const SCOPES = ["users.read", "tweet.read"];
 
 const VERIFIER_COOKIE = "fobs_x_verifier";
 const STATE_COOKIE = "fobs_x_state";
+const INTENT_COOKIE = "fobs_x_intent";
 
 export function xConfigured(): boolean {
   return Boolean(process.env.X_CLIENT_ID && process.env.X_CALLBACK_URL);
@@ -49,9 +51,14 @@ function challengeFor(verifier: string): string {
   return base64url(createHash("sha256").update(verifier).digest());
 }
 
-export type AuthorizeStart = { url: string; verifier: string; state: string };
+export type AuthorizeStart = {
+  url: string;
+  verifier: string;
+  state: string;
+  intent: OAuthIntent;
+};
 
-export function authorizeStart(): AuthorizeStart {
+export function authorizeStart(intent: OAuthIntent): AuthorizeStart {
   const verifier = base64url(randomBytes(32));
   const state = base64url(randomBytes(16));
 
@@ -64,7 +71,7 @@ export function authorizeStart(): AuthorizeStart {
   url.searchParams.set("code_challenge", challengeFor(verifier));
   url.searchParams.set("code_challenge_method", "S256");
 
-  return { url: url.toString(), verifier, state };
+  return { url: url.toString(), verifier, state, intent };
 }
 
 const TRANSIENT = {
@@ -79,13 +86,19 @@ export async function storeFlowCookies(flow: AuthorizeStart) {
   const store = await cookies();
   store.set(VERIFIER_COOKIE, flow.verifier, TRANSIENT);
   store.set(STATE_COOKIE, flow.state, TRANSIENT);
+  store.set(INTENT_COOKIE, encodeIntent(flow.intent), TRANSIENT);
 }
 
-export async function readFlowCookies() {
+export async function readFlowCookies(): Promise<{
+  verifier: string | null;
+  state: string | null;
+  intent: OAuthIntent | null;
+}> {
   const store = await cookies();
   return {
     verifier: store.get(VERIFIER_COOKIE)?.value ?? null,
-    state: store.get(STATE_COOKIE)?.value ?? null
+    state: store.get(STATE_COOKIE)?.value ?? null,
+    intent: decodeIntent(store.get(INTENT_COOKIE)?.value ?? null)
   };
 }
 
@@ -93,6 +106,7 @@ export async function clearFlowCookies() {
   const store = await cookies();
   store.delete(VERIFIER_COOKIE);
   store.delete(STATE_COOKIE);
+  store.delete(INTENT_COOKIE);
 }
 
 export type XProfile = {
@@ -121,9 +135,25 @@ export async function exchangeCode(input: {
     client_id: process.env.X_CLIENT_ID!
   });
 
+  const headers: Record<string, string> = {
+    "content-type": "application/x-www-form-urlencoded"
+  };
+
+  // X apps come in two flavours. A *confidential* client (the "Web App" type)
+  // must authenticate the token exchange with HTTP Basic `client_id:client_secret`
+  // — without it X returns 401 `unauthorized_client: Missing valid authorization
+  // header`, even though the PKCE verifier is correct. A *public* client (the
+  // "Native App" type) uses PKCE alone. So we send Basic auth when a secret is
+  // configured and fall back to public-client PKCE when it is not.
+  const secret = process.env.X_CLIENT_SECRET;
+  if (secret) {
+    const basic = Buffer.from(`${process.env.X_CLIENT_ID}:${secret}`).toString("base64");
+    headers.authorization = `Basic ${basic}`;
+  }
+
   const tokenResponse = await fetch(TOKEN_URL, {
     method: "POST",
-    headers: { "content-type": "application/x-www-form-urlencoded" },
+    headers,
     body
   });
   if (!tokenResponse.ok) {
@@ -151,6 +181,9 @@ export async function exchangeCode(input: {
     id: payload.data.id,
     username: payload.data.username,
     name: payload.data.name || payload.data.username,
-    avatar: payload.data.profile_image_url ?? null
+    // X hands back the 48px `_normal` thumbnail by default. Swapping the size
+    // token gives the full-resolution avatar for the same URL — otherwise every
+    // profile pic renders tiny and blurs when scaled up.
+    avatar: payload.data.profile_image_url?.replace("_normal", "_400x400") ?? null
   };
 }

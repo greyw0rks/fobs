@@ -25,12 +25,44 @@ export function programId(): PublicKey {
   );
 }
 
+/**
+ * USDC — the quote currency for every swap the bridge routes.
+ *
+ * On mainnet this is the canonical Circle mint, not something this app issues:
+ * FOBS is a medium into markets that already exist, so it holds no mint
+ * authority and burns nothing. The env override exists only so a fork can point
+ * at a test mint; the default is the real one.
+ */
 export function usdcMint(): PublicKey {
-  return new PublicKey(required("NEXT_PUBLIC_USDC_MINT"));
+  return new PublicKey(
+    required("NEXT_PUBLIC_USDC_MINT", "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v")
+  );
 }
 
 export function rpcUrl(): string {
-  return process.env.SOLANA_RPC_URL ?? "https://api.devnet.solana.com";
+  return process.env.SOLANA_RPC_URL ?? "https://api.mainnet-beta.solana.com";
+}
+
+/**
+ * The endpoint the *browser* points its wallet adapter at.
+ *
+ * Separate from `rpcUrl()` because Next only inlines `NEXT_PUBLIC_*` into the
+ * client bundle — `SOLANA_RPC_URL` is a server variable and reaching for it in a
+ * client component yields `undefined` at runtime rather than an error, which is
+ * the kind of bug that looks like the wallet is broken.
+ *
+ * The browser never sends a trade through this connection: a signed transaction
+ * goes to `POST /api/trades/submit`, so the server does the sending and the
+ * service can be configured with a private endpoint where one exists. This
+ * endpoint is what the adapter uses to answer "is this wallet connected to the
+ * right cluster" and to read balances for display.
+ */
+export function browserRpcUrl(): string {
+  return (
+    process.env.NEXT_PUBLIC_SOLANA_RPC_URL ??
+    process.env.NEXT_PUBLIC_RPC_URL ??
+    "https://api.mainnet-beta.solana.com"
+  );
 }
 
 let cached: Connection | null = null;

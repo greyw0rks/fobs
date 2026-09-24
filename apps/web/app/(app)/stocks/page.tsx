@@ -1,65 +1,61 @@
+import type { Route } from "next";
 import Link from "next/link";
+import { MarketsTable } from "@/components/fobs/markets-table";
+import { Reveal } from "@/components/fobs/motion";
 import { listAssets } from "@/lib/server/queries";
-import { price, synthetic } from "@/lib/format";
+import { changesForSymbols } from "@/lib/server/price-history";
 
 export const dynamic = "force-dynamic";
 
 /**
  * The market list.
  *
- * Deliberately sparse: symbol, what it tracks, price, and how many trades have
- * actually been indexed. There is no 24h change column because the app has no
- * price history to compute one from, and a plausible-looking invented percentage
- * is the single most dangerous thing this page could show.
+ * MarketsTable owns the honesty rules: a null price renders an em dash, and the
+ * 1D column is a real close-to-close change (null → em dash) — the only
+ * green/red on the page. The 1D figures come from changesForSymbols, which reads
+ * real history per symbol and returns null where it has none.
  */
 export default async function StocksPage() {
   const assets = await listAssets();
+  const changes = await changesForSymbols(assets.map((a) => a.symbol));
+
+  const indexedTrades = assets.reduce((total, asset) => total + asset.tradeCount, 0);
 
   return (
-    <>
-      <div className="topbar">
-        <div>
-          <h2>Markets</h2>
-          <p>
-            Five synthetic assets. Prices come from each asset&apos;s onchain oracle
-            account, read by the indexer — the same account the trade program prices
-            against.
+    <div className="space-y-5">
+      <Reveal>
+        <section>
+          <span className="text-[11px] font-medium uppercase tracking-wide text-[#898a84]">
+            Solana mainnet
+          </span>
+          <h1 className="mt-1 text-[28px] font-semibold tracking-[-0.05em]">Markets</h1>
+          <p className="mt-1 text-sm text-[#777872]">
+            {assets.length} real mainnet {assets.length === 1 ? "token" : "tokens"},{" "}
+            {indexedTrades} {indexedTrades === 1 ? "trade" : "trades"}. Each price is read
+            live — a Jupiter route or a Pyth reference — not from anything fobs controls.
           </p>
-        </div>
-      </div>
+        </section>
+      </Reveal>
 
-      <section className="feed">
-        <div className="card">
-          <div className="asset-list">
-            {assets.map((asset) => (
-              <Link className="asset-row" key={asset.id} href={`/asset/${asset.symbol}`}>
-                <span>
-                  <strong>{synthetic(asset.symbol)}</strong>
-                  <br />
-                  <span className="muted">
-                    {asset.symbol} · {asset.name}
-                  </span>
-                </span>
-                <span style={{ textAlign: "right" }}>
-                  <strong className="num">{price(asset.price)}</strong>
-                  <br />
-                  <span className="muted">
-                    {asset.priceKnown
-                      ? `${asset.tradeCount} trades · ${asset.traderCount} accounts`
-                      : "price not read yet"}
-                  </span>
-                </span>
-              </Link>
-            ))}
-          </div>
-        </div>
+      <Reveal delay={0.05}>
+        <MarketsTable
+          assets={assets}
+          changes={changes}
+          title="Markets"
+          subtitle="What people are trading"
+        />
+      </Reveal>
 
-        <div className="panel disclosure">
-          <strong>All five are synthetic.</strong> They track a real company&apos;s
-          price through a token this program mints. Holding one is not holding stock,
-          and none of them entitle you to anything a share would.
-        </div>
-      </section>
-    </>
+      <Reveal delay={0.1} className="fobs-surface p-5 text-xs leading-relaxed text-[#777872]">
+        <strong className="font-semibold text-[#111312]">fobs issues none of these.</strong>{" "}
+        Each is a real token that already trades on Solana mainnet, reached through a
+        Jupiter swap your own wallet signs. A tokenized equity is not the share itself —
+        issuer terms, liquidity, and price dislocation are real risks — so read{" "}
+        <Link href={"/terms" as Route} className="font-medium text-[#3175c6]">
+          the full disclosure
+        </Link>{" "}
+        before you trade.
+      </Reveal>
+    </div>
   );
 }

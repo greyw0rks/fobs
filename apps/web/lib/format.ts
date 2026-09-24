@@ -60,12 +60,18 @@ export function initials(name: string): string {
  * stock, which is false and is the one piece of framing this product cannot get
  * wrong. Every surface that names an asset goes through here.
  */
+/**
+ * A display label for an asset symbol. Kept as a seam (callers pass symbols
+ * through it) but no longer prefixes "Synthetic" — the tokens are real mainnet
+ * tokens FOBS does not issue, so the label is just the symbol.
+ */
 export function synthetic(symbol: string): string {
-  return `Synthetic ${symbol.replace(/^s/, "")}`;
+  return symbol;
 }
 
 export function explorerUrl(signature: string): string {
-  return `https://explorer.solana.com/tx/${signature}?cluster=devnet`;
+  // Mainnet is the explorer's default cluster; no query param needed.
+  return `https://explorer.solana.com/tx/${signature}`;
 }
 
 /** Shortened for display; the full value is available on the Explorer link. */

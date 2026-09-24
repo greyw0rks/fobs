@@ -1,0 +1,84 @@
+/**
+ * Fobs design tokens + the handful of semantic classes the frame components
+ * share. Additive only: every token is namespaced `--fobs-*` and every class is
+ * prefixed `.fobs-`, so this file cannot touch the live app's variables or
+ * classes. The global element resets from the original spec (`* {}`, `body {}`,
+ * `button {}`) are intentionally dropped — `app/globals.css` already sets
+ * `box-sizing: border-box` and normalises `a`/`button`/`input`, and redefining
+ * `body` here would repaint the whole product. Imported from the `/design`
+ * layout only.
+ */
+
+:root {
+  --fobs-bg: #f4f3ef;
+  --fobs-surface: #ffffff;
+  --fobs-surface-soft: #eeeee9;
+
+  --fobs-text: #111312;
+  --fobs-muted: #777872;
+  --fobs-border: #e3e2dc;
+
+  --fobs-black: #080909;
+  --fobs-blue: #3175c6;
+  --fobs-blue-soft: #dceafa;
+
+  --fobs-green: #23845b;
+  --fobs-green-soft: #dceee5;
+
+  --fobs-red: #c94c4c;
+  --fobs-red-soft: #f5dcdc;
+
+  --fobs-purple: #dfd2f2;
+  --fobs-peach: #f5ddd2;
+  --fobs-yellow: #f2e8bd;
+  --fobs-mint: #dcece3;
+
+  --fobs-radius-sm: 8px;
+  --fobs-radius-md: 12px;
+  --fobs-radius-lg: 18px;
+  --fobs-radius-xl: 24px;
+}
+
+.fobs-page {
+  min-height: 100vh;
+  background: var(--fobs-bg);
+  color: var(--fobs-text);
+}
+
+.fobs-surface {
+  background: var(--fobs-surface);
+  border: 1px solid var(--fobs-border);
+  border-radius: var(--fobs-radius-lg);
+}
+
+.fobs-button-primary {
+  border: 0;
+  border-radius: 10px;
+  background: var(--fobs-black);
+  color: #ffffff;
+  padding: 11px 16px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.fobs-button-secondary {
+  border: 1px solid var(--fobs-border);
+  border-radius: 10px;
+  background: #ffffff;
+  color: var(--fobs-text);
+  padding: 10px 15px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.fobs-muted {
+  color: var(--fobs-muted);
+}
+
+.fobs-positive {
+  color: var(--fobs-green);
+}
+
+.fobs-negative {
+  color: var(--fobs-red);
+}

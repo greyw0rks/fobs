@@ -36,9 +36,14 @@ stays fully wired and tested-by-inspection for mainnet, where the same feed ids
 resolve to live prices. Because `Asset` carries `price_feed` and `PriceSource`
 per asset, switching is a registration argument — no program change.
 
-The UI states the active source per asset (`Pyth priced` vs `Demo oracle`) rather
-than implying all prices are live. Showing a days-old price under a "Pyth" label
-would be the exact disclosure failure the product is trying to avoid.
+The UI states the active source per asset rather than implying all prices are
+live. Showing a days-old price under a "Pyth" label would be the exact disclosure
+failure the product is trying to avoid.
+
+Since this measurement, the devnet price is no longer a placeholder: the operator
+pushes a live Yahoo Finance quote into the same oracle account every ~30 seconds
+(`lib/server/push-prices.ts`), and the asset page says "Real market price, pushed
+onchain" and shows the age of the number. See "What changed since", below.
 
 ## Two things that cost time to discover
 
@@ -94,9 +99,43 @@ AMZN  b5d0e0fa58a1f8b81498ae670ce93c872d14434b72c364885d4fa1b257cbb07a
 These are stored on each asset as `pythFeedId` even while the active source is
 `mock`.
 
+## What changed since
+
+The measurement above stands, and so does the conclusion: **there is no Pyth
+price to read on devnet.** What changed is what is done about it.
+
+Registering `PriceSource::Mock` was read at the time as "the devnet price is a
+placeholder", and it was — `sNVDA` sat at the value `devnet:bootstrap` wrote
+while the real NVDA traded elsewhere. That is the failure the table above was
+supposed to prevent, arriving by a different route: not a stale Pyth price under
+a live label, but a frozen constant under any label at all.
+
+The fix uses the fact that the oracle account is **admin-gated and exempt from
+`MAX_PRICE_AGE_SECS` by construction** — the program's staleness check exists to
+reject a stale *Pyth* account, and an account only the protocol admin can write
+does not need it. So `push-prices.ts` fetches real quotes from Yahoo Finance and
+writes them with `set_mock_price`, in one bundled transaction for all five assets
+per tick, skipping any whose price has not moved. The program is unchanged.
+
+Two honest caveats:
+
+- The account and instruction kept their names. `MockOracle` and `set_mock_price`
+  describe *who may write* the account, which is still a privileged operator, not
+  *what is in it*, which is now a real quote. Renaming would cost a redeploy and
+  buy nothing functional.
+- The pushed price is a `regularMarketPrice` with its own `regularMarketTime`, so
+  a weekend or overnight value is published with the timestamp it actually has
+  rather than being dressed up as current. The UI renders that age.
+
+Mainnet would not need any of this: the same feed ids resolve to live prices
+there (5/5 fresh, 8–16s), and the `Pyth` branch is the one that would run.
+
 ## Still open
 
-- No asset is registered onchain, so the `Pyth` branch has not executed against
-  a live mainnet feed. It is written but **unverified at runtime**.
+- The `Pyth` branch has still not executed against a live mainnet feed. It is
+  written and its offsets are decoded from a real account (above), but it is
+  **unverified at runtime**. Every devnet trade to date has gone through the
+  pushed-price path.
 - `MAX_PRICE_AGE_SECS = 90` is sized for the observed mainnet publish cadence
-  (~8–16s). It has not been tested across a mainnet outage or a weekend.
+  (~8–16s). It has not been tested across a mainnet outage or a weekend. It does
+  not apply to the pushed oracle, which is exempt.

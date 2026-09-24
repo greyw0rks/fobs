@@ -1,38 +1,48 @@
+import type { Route } from "next";
 import Link from "next/link";
 import { NotificationItem } from "@/components/NotificationItem";
+import { Reveal } from "@/components/fobs/motion";
 import { listNotifications, unreadNotificationCount } from "@/lib/server/queries";
 import { currentUser } from "@/lib/server/session";
 
 export const dynamic = "force-dynamic";
 
 /**
- * The notification centre — which is really a view of the product loop.
- *
- * Each row says what happened *and who did it*, because the point of a
- * notification here is social: someone you follow traded, or someone followed
- * you in. The message text is rendered from the type rather than stored, so it
- * can never drift from the trade it describes.
+ * The notification centre — a view of the product loop. Each row says what
+ * happened and who did it. The message text is rendered from the type by
+ * NotificationItem rather than stored, so it can never drift from the trade it
+ * describes; this page only frames it.
  */
 export default async function NotificationsPage() {
   const viewer = await currentUser();
 
   if (!viewer) {
     return (
-      <>
-        <div className="topbar">
-          <div>
-            <h2>Notifications</h2>
-            <p>Sign in to see who traded and who followed you.</p>
-          </div>
-        </div>
-        <div className="card">
-          <h3>Not signed in</h3>
-          <p className="muted">
-            <Link href="/sign-in">Sign in</Link> to get notified when the people you
-            follow trade.
+      <div className="mx-auto max-w-[850px] space-y-5">
+        <Reveal>
+          <section>
+            <span className="text-[11px] font-medium uppercase tracking-wide text-[#898a84]">
+              Notifications
+            </span>
+            <h1 className="mt-1 text-[28px] font-semibold tracking-[-0.05em]">Activity</h1>
+            <p className="mt-1 text-sm text-[#777872]">
+              Sign in to see who traded and who followed you.
+            </p>
+          </section>
+        </Reveal>
+
+        <Reveal delay={0.05} className="fobs-surface p-6 text-center">
+          <h3 className="text-sm font-semibold">Not signed in</h3>
+          <p className="mt-1 text-xs text-[#777872]">
+            Notifications are per-account, so there is nothing to show until you have one.
           </p>
-        </div>
-      </>
+          <p className="mt-4">
+            <Link href={"/sign-in" as Route} className="fobs-button-primary inline-flex">
+              Sign in
+            </Link>
+          </p>
+        </Reveal>
+      </div>
     );
   }
 
@@ -42,32 +52,38 @@ export default async function NotificationsPage() {
   ]);
 
   return (
-    <>
-      <div className="topbar">
-        <div>
-          <h2>Notifications</h2>
-          <p>
-            {unread > 0
-              ? `${unread} unread.`
-              : "All caught up."}{" "}
-            These are generated from trades the indexer read off the chain.
+    <div className="mx-auto max-w-[850px] space-y-5">
+      <Reveal>
+        <section>
+          <span className="text-[11px] font-medium uppercase tracking-wide text-[#898a84]">
+            Notifications
+          </span>
+          <h1 className="mt-1 text-[28px] font-semibold tracking-[-0.05em]">Activity</h1>
+          <p className="mt-1 text-sm text-[#777872]">
+            {unread > 0 ? `${unread} unread.` : "All caught up."} Generated from trades
+            confirmed on chain.
           </p>
-        </div>
-      </div>
+        </section>
+      </Reveal>
 
-      <section className="feed">
-        {notifications.length === 0 ? (
-          <div className="card">
-            <h3>Nothing yet</h3>
-            <p className="muted">
-              When someone you follow trades, or someone FOMOs your trade, it lands
-              here and updates live.
-            </p>
-          </div>
-        ) : (
+      {notifications.length === 0 ? (
+        <Reveal delay={0.05} className="fobs-surface p-6 text-center">
+          <h3 className="text-sm font-semibold">Nothing yet</h3>
+          <p className="mt-1 text-xs text-[#777872]">
+            When someone you follow trades, or someone FOMOs your trade, it lands here and
+            updates live.
+          </p>
+          <p className="mt-4">
+            <Link href={"/friends" as Route} className="fobs-button-primary inline-flex">
+              Find people to follow
+            </Link>
+          </p>
+        </Reveal>
+      ) : (
+        <Reveal delay={0.05} className="fobs-surface overflow-hidden p-2 sm:p-4">
           <NotificationItem initial={notifications} unread={unread} />
-        )}
-      </section>
-    </>
+        </Reveal>
+      )}
+    </div>
   );
 }

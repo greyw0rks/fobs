@@ -14,7 +14,17 @@
  */
 
 export type TradeSide = "buy" | "sell";
-export type PriceFeedType = "pyth" | "mock";
+/**
+ * Where a price came from, as the UI needs to say it.
+ *
+ * `pyth` is a Pyth `PriceUpdateV2` account the program read directly. `market`
+ * is a real market price the operator pushed into the program's admin-written
+ * oracle — which is what devnet forces, because it publishes no usable Pyth
+ * US-equity feed. The database column still reads `mock`; that is the program's
+ * own `PriceSource` name and renaming it would mean a redeploy. What the *user*
+ * is told is what the number actually is, and it is a real price.
+ */
+export type PriceFeedType = "pyth" | "market";
 export type FeedView = "for-you" | "following";
 export type NotificationType = "FRIEND_TRADE" | "FOLLOW" | "FOMO" | "TRADE_CONFIRMED";
 
@@ -23,6 +33,12 @@ export type FeedUser = {
   username: string;
   displayName: string;
   avatar: string | null;
+};
+
+/** One external link an account owner chooses to show on their profile. */
+export type ProfileLink = {
+  label: string;
+  url: string;
 };
 
 export type FeedAsset = {
@@ -38,6 +54,15 @@ export type FeedAsset = {
   priceFeedType: PriceFeedType;
   pythFeedId: string | null;
   priceKnown: boolean;
+  /**
+   * When the oracle's value last moved, ISO. Null until the indexer has read
+   * the oracle once.
+   *
+   * Published next to the price rather than kept server-side because a price
+   * with no age reads as current whether or not it is, and outside market hours
+   * a real price is genuinely hours old. The UI says how old.
+   */
+  priceUpdatedAt: string | null;
 };
 
 export type FeedTrade = {
@@ -58,10 +83,13 @@ export type FeedTrade = {
 };
 
 export type AssetSummary = FeedAsset & {
-  onchainId: number;
-  assetAddress: string;
+  /** xstock | prestock | ondo. Null only for a legacy synthetic row. */
+  kind: string | null;
+  /** Synthetic-program addresses — null for a bridged asset, which has no PDAs. */
+  onchainId: number | null;
+  assetAddress: string | null;
   mintAddress: string;
-  vaultAddress: string;
+  vaultAddress: string | null;
   oracleAddress: string | null;
   tradeCount: number;
   traderCount: number;
@@ -97,12 +125,21 @@ export type SessionUserView = {
   displayName: string;
   avatar: string | null;
   walletAddress: string | null;
-  isTestUser: boolean;
   onboarded: boolean;
 };
 
 export type ProfileView = {
-  user: FeedUser & { walletAddress: string | null; createdAt: string };
+  user: FeedUser & {
+    walletAddress: string | null;
+    createdAt: string;
+    /** Null until the owner writes one; never a fabricated placeholder. */
+    bio: string | null;
+    /** The owner's chosen external links. Empty when none are set. */
+    links: ProfileLink[];
+    /** Whether an X / Google identity is attached — the fact, not the id. */
+    hasX: boolean;
+    hasGoogle: boolean;
+  };
   followers: number;
   following: number;
   trades: FeedTrade[];

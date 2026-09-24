@@ -1,0 +1,26 @@
+# Vercel deploys the Next app in apps/web (root directory = apps/web) but the
+# CLI uploads the whole workspace so pnpm can resolve it. Everything below is
+# irrelevant to the web build — and .anchor/ holds a live validator socket that
+# is not a regular file, which is what failed the first deploy (ENXIO).
+
+# Solana / Anchor / Rust — not part of the pnpm workspace
+.anchor
+target
+programs
+tests
+.devnet
+Cargo.lock
+Cargo.toml
+Anchor.toml
+
+# Build artifacts and deps (Vercel installs + builds fresh)
+node_modules
+**/node_modules
+.next
+**/.next
+
+# VCS and local noise
+.git
+docs
+*.md
+HANDOFF.md

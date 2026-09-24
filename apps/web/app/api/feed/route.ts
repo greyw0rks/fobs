@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { listFeed, type FeedView } from "@/lib/server/queries";
-import { currentUserOrDevFallback } from "@/lib/server/session";
+import { currentUser } from "@/lib/server/session";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +22,7 @@ const PAGE = 50;
  * looking exactly like a successful "load more" that appended duplicates.
  */
 export async function GET(request: Request) {
-  const viewer = await currentUserOrDevFallback();
+  const viewer = await currentUser();
   const params = new URL(request.url).searchParams;
 
   const requested = params.get("view");

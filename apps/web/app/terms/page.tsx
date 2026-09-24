@@ -1,6 +1,6 @@
-import Link from "next/link";
+import { SiteNav } from "@/components/SiteNav";
+import { Reveal } from "@/components/fobs/motion";
 import { prisma } from "@/lib/prisma";
-import { USDC_PER_USER } from "@/lib/server/funding";
 
 export const dynamic = "force-dynamic";
 
@@ -9,13 +9,11 @@ export const dynamic = "force-dynamic";
  *
  * One page, and it exists because several things about this product are easy to
  * mistake for something they are not: the prices look like prices, the symbols
- * look like tickers, the USDC has a dollar sign, and the wallet is a wallet. Each
- * of those is a real thing standing in for a fake one, which is the exact shape
- * of a disclosure problem.
+ * look like tickers, the USDC has a dollar sign, and the wallet is a wallet.
  *
  * The asset list is read from the database rather than written out here, so the
- * page cannot go stale when the five tickers change — a disclosure that names
- * the wrong instruments is worse than none.
+ * page cannot go stale when the tickers change — a disclosure that names the
+ * wrong instruments is worse than none.
  */
 export default async function TermsPage() {
   const assets = await prisma.asset.findMany({
@@ -23,160 +21,164 @@ export default async function TermsPage() {
     select: { symbol: true, name: true, priceFeedType: true, pythFeedId: true }
   });
 
-  const usdc = Number(USDC_PER_USER) / 1e6;
-
   return (
-    <div className="landing">
-      <header className="hero">
-        <div className="brand">
-          <Link className="brand" href="/">
-            <span className="mark">F</span>
-            <span>
-              <h1>FOBS</h1>
-              <p>Terms and disclosure</p>
-            </span>
-          </Link>
-        </div>
-        <Link className="secondary" href="/feed">
-          Back to the feed
-        </Link>
-      </header>
+    <main className="min-h-screen bg-[#f4f3ef] text-[#111312]">
+      <SiteNav action={{ href: "/feed", label: "Back to the feed" }} />
 
-      <section className="landing-section disclosure">
-        <h3>FOBS is not a brokerage, and these are not stocks</h3>
-        <p>
-          Nothing here is an offer to buy or sell a security. There is no company,
-          no share, no dividend, and no ownership of anything. FOBS is a
-          demonstration of a social trading loop, running entirely on Solana
-          devnet, where nothing has value.
-        </p>
-      </section>
+      <Reveal>
+        <article className="mx-auto max-w-[720px] px-6 py-12 lg:py-16">
+        <header className="mb-10">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#3175c6]">
+            Legal
+          </p>
+          <h1 className="mt-3 text-[44px] font-semibold leading-none tracking-[-0.05em]">
+            Terms and disclosure
+          </h1>
+          <p className="mt-4 text-base leading-7 text-[#6e6f69]">
+            What this is, what it is not, and the parts worth reading twice.
+          </p>
+        </header>
 
-      <section className="landing-section">
-        <h3>Synthetic assets</h3>
-        <p className="muted">
-          The five instruments below are tokens this program mints. Each one is
-          designed to track the price of a real company&apos;s stock. Holding one
-          gives you a token and a claim on the program&apos;s vault — nothing else.
-          They carry no voting rights, pay no dividend, and cannot be redeemed for
-          a real share anywhere.
-        </p>
-        <div className="asset-list">
-          {assets.map((asset) => (
-            <div className="asset-row" key={asset.symbol}>
-              <span>
-                <strong>{asset.name}</strong>
-                <br />
-                <span className="muted">
-                  Ticker <strong>{asset.symbol}</strong>, minted by this program
+        <section className="mb-6 rounded-[18px] border border-[#e3e2dc] bg-[#eeeee9] p-6">
+          <h3 className="text-base font-semibold">FOBS is a bridge, not a brokerage</h3>
+          <p className="mt-3 text-sm leading-7 text-[#5c5d57]">
+            Nothing here is an offer to buy or sell a security, and FOBS is not a
+            broker, dealer, or custodian. It is a front-end that <em>routes</em> you
+            into tokens that already trade on Solana mainnet: it mints nothing,
+            holds no key, and takes no custody. Every trade is a swap your own
+            wallet signs. The tokens are issued by third parties — not by FOBS —
+            and they are not the underlying shares.
+          </p>
+        </section>
+
+        <section className="mb-8">
+          <h3 className="text-base font-semibold">The tokens</h3>
+          <p className="mt-3 text-sm leading-7 text-[#777872]">
+            The instruments below are real tokens that already trade on Solana
+            mainnet, issued by third parties — Backed (xStocks), PreStocks, and
+            Ondo — not by FOBS. Each is designed to represent exposure to a
+            company, but a token is not the share itself: it carries no voting
+            rights, pays no dividend, and its redemption and backing are the
+            issuer&apos;s terms, not ours.
+          </p>
+
+          <div className="mt-5 overflow-hidden rounded-[18px] border border-[#e3e2dc] bg-white">
+            {assets.map((asset) => (
+              <div
+                key={asset.symbol}
+                className="flex items-start justify-between gap-4 border-b border-[#efeee9] px-5 py-4 last:border-b-0"
+              >
+                <span className="text-sm">
+                  <strong>{asset.name}</strong>
+                  <br />
+                  <span className="text-xs text-[#777872]">
+                    Ticker{" "}
+                    <strong className="font-mono tabular-nums">{asset.symbol}</strong>,
+                    issued by a third party
+                  </span>
                 </span>
-              </span>
-              <span className="muted" style={{ textAlign: "right" }}>
-                {asset.priceFeedType === "pyth"
-                  ? "Pyth oracle"
-                  : "Test price feed (no Pyth feed available on devnet)"}
-              </span>
-            </div>
-          ))}
-        </div>
-        <p className="muted" style={{ marginTop: 12 }}>
-          Where a symbol carries an <code>s</code> prefix — <code>sNVDA</code>,{" "}
-          <code>sAAPL</code> — that prefix is the synthetic marker. It is not part
-          of any real ticker.
-        </p>
-      </section>
+                <span className="shrink-0 text-right text-xs text-[#777872]">
+                  {asset.priceFeedType === "pyth"
+                    ? "Checked against a Pyth reference"
+                    : "Priced by its live route"}
+                </span>
+              </div>
+            ))}
+          </div>
+        </section>
 
-      <section className="landing-section">
-        <h3>Prices</h3>
-        <p className="muted">
-          Trades are priced by the program, reading an oracle account on chain —
-          never by a number this website sends. On mainnet that feed is Pyth. On
-          devnet no US-equity Pyth feed is published, so the program reads a test
-          feed instead, and every price in the app is that feed&apos;s value: not a
-          live market price, and not necessarily close to one.
-        </p>
-        <p className="muted">
-          The app shows a figure only where one was actually read. Where a price is
-          missing it says so rather than showing a placeholder, and it does not
-          compute a gain, a loss, or a percentage change from a price it does not
-          have.
-        </p>
-      </section>
+        <Section title="Prices">
+          <p>
+            Prices are read live from mainnet — a Jupiter route for what a swap
+            would actually pay, or a Pyth reference for a listed equity — never a
+            number this website invents. For listed names FOBS checks the venue
+            price against its Pyth reference and refuses to route a trade when the
+            two have dislocated. A quote is also shown net of the token&apos;s
+            transfer fee, which the venue does not always subtract for you.
+          </p>
+          <p>
+            The app shows a figure only where one was actually read. Where a price
+            is missing it says so rather than showing a placeholder, and it does
+            not compute a gain, a loss, or a percentage change from a price it does
+            not have.
+          </p>
+        </Section>
 
-      <section className="landing-section">
-        <h3>Test USDC</h3>
-        <p className="muted">
-          Balances shown as USDC are a test token this program mints, funded at up
-          to {usdc.toLocaleString()} per account. It is not Circle USDC, it is not
-          backed by dollars, and it cannot be withdrawn, sold, or transferred for
-          value. It exists so there is something to trade with on devnet.
-        </p>
-      </section>
+        <Section title="USDC">
+          <p>
+            Trades are quoted and settled in real Circle USDC on Solana mainnet,
+            held in your own wallet. FOBS never holds your USDC and never touches
+            it — the swap moves it directly between your wallet and the venue.
+          </p>
+        </Section>
 
-      <section className="landing-section disclosure">
-        <h3>Custody — the part to read twice</h3>
-        <p>
-          When you create a wallet here, <strong>the server generates the private
-          key and keeps it</strong>, encrypted, in this application&apos;s database.
-          Trades are signed on the server with that key. This is custodial: the
-          operator of this deployment can sign transactions as you, and could move
-          anything the wallet holds.
-        </p>
-        <p>
-          That is a deliberate, disclosed choice for a devnet test environment, and
-          it is the first thing that would have to change before this held anything
-          of value — a product with real money would use a wallet adapter and sign
-          in the user&apos;s browser, so no key ever reaches a server. Do not put
-          anything that matters into a wallet created here.
-        </p>
-        <p className="muted">
-          Two related things, stated plainly because they are easy to get wrong:
-          the wallet-creation step happens on{" "}
-          <Link href="/welcome">the setup page</Link>, not as a side effect of
-          signing in, and seeded test accounts hold their keys the same way.
-        </p>
-      </section>
+        <section className="mb-8 rounded-[18px] border border-[#e3e2dc] bg-[#eeeee9] p-6">
+          <h3 className="text-base font-semibold">Custody — the part to read twice</h3>
+          <p className="mt-3 text-sm leading-7 text-[#5c5d57]">
+            <strong className="text-[#111312]">FOBS takes no custody and signs nothing.</strong>{" "}
+            To trade you connect your own mainnet wallet; the swap is built by the
+            server, signed in your browser, and forwarded — no private key ever
+            reaches this server.
+          </p>
+          <p className="mt-3 text-sm leading-7 text-[#5c5d57]">
+            There is no exception and no custodial mode. FOBS cannot create a
+            wallet for you, cannot hold a key for you, and cannot sign anything on
+            your behalf. Signing in with X or Google gives you an{" "}
+            <em>identity</em>, not a wallet — to trade you still connect one you
+            already hold. An earlier build offered a server-held demo key for
+            trying the social layer on a test cluster; that option is gone, and
+            nothing it left behind can hold or trade real value.{" "}
+            <strong className="text-[#111312]">
+              Never send real funds anywhere expecting FOBS to hold them
+            </strong>{" "}
+            — connect your own wallet and it stays yours.
+          </p>
+        </section>
 
-      <section className="landing-section">
-        <h3>What FOMO does</h3>
-        <p className="muted">
-          Pressing FOMO on someone else&apos;s trade places <strong>your own
-          trade</strong> — your size, your wallet, your signature, priced at the
-          current oracle price. It is not a copy: it will not match their entry
-          price, their quantity, or their timing. The only thing carried over is a
-          reference to their trade, so both sides can see who inspired whom. You can
-          lose money on a FOMO nobody else lost money on, including the person you
-          copied.
-        </p>
-      </section>
+        <Section title="What FOMO does">
+          <p>
+            Pressing FOMO on someone else&apos;s trade places{" "}
+            <strong>your own trade</strong> — your size, your wallet, your
+            signature, priced at the current market price. It is not a copy: it
+            will not match their entry price, their quantity, or their timing. The
+            only thing carried over is a reference to their trade, so both sides
+            can see who inspired whom. You can lose money on a FOMO nobody else
+            lost money on, including the person you copied.
+          </p>
+        </Section>
 
-      <section className="landing-section">
-        <h3>No warranty, no recourse</h3>
-        <p className="muted">
-          This is software provided as-is, with no warranty of any kind. There is no
-          support, no insurance, no dispute process, and no way to recover funds.
-          Devnet can be reset by anyone at any time, which would erase balances,
-          holdings and history.
-        </p>
-      </section>
+        <Section title="No warranty, no recourse">
+          <p>
+            This is software provided as-is, with no warranty of any kind. There
+            is no support, no insurance, and no dispute process. Trades settle on
+            mainnet and are irreversible; FOBS cannot reverse a swap or recover
+            funds. The tokens, their issuers, and the liquidity you trade against
+            are third parties outside FOBS&apos;s control, and a token&apos;s value
+            can go to zero.
+          </p>
+        </Section>
 
-      <section className="landing-section">
-        <h3>Accounts and data</h3>
-        <p className="muted">
-          Signing in with X reads your public profile — your handle, display name
-          and avatar — to create an account, and never posts on your behalf and
-          never reads your followers, your posts, or your direct messages. Your
-          follows, holdings and trade history are stored in this deployment&apos;s
-          database and mirrored from public devnet state; they are not sold and not
-          shared with anyone.
-        </p>
-        <p className="muted">
-          Test accounts seeded for the demo are publicly listed on{" "}
-          <Link href="/sign-in">the sign-in page</Link> so anyone can use them.
-          Anything done with a seeded account is visible to everyone and is not
-          private.
-        </p>
-      </section>
-    </div>
+        <Section title="Accounts and data">
+          <p>
+            Signing in with X or Google reads your public profile — your handle or
+            name and avatar — to create an account, and never posts on your behalf
+            or reads your contacts, posts, or messages. Your follows and trade
+            history are stored in this deployment&apos;s database and mirrored from
+            public mainnet state; they are not sold and not shared with anyone.
+          </p>
+        </Section>
+      </article>
+      </Reveal>
+    </main>
+  );
+}
+
+/** A plain reading-layout section: title plus muted prose paragraphs. */
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="mb-8">
+      <h3 className="text-base font-semibold">{title}</h3>
+      <div className="mt-3 space-y-3 text-sm leading-7 text-[#777872]">{children}</div>
+    </section>
   );
 }

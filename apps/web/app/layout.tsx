@@ -1,44 +1,39 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
+import { WalletProviders } from "@/components/WalletProvider";
 import "./globals.css";
+// The Fobs frame system is now the product UI, so its Tailwind utilities and
+// `--fobs-*` tokens load app-wide. Order matters: globals first, then utilities
+// (they layer over globals' element rules), then the fobs token sheet.
+import "@/styles/tailwind.css";
+import "@/styles/fobs.css";
 
 /**
- * Two fonts, self-hosted from `app/fonts/` rather than fetched at build time.
+ * Two fonts, self-hosted from `app/fonts/`.
  *
- * The stylesheet has always asked for `Inter` without anything ever loading it,
- * so every glyph on every page has come from the OS default — which is why the
- * numbers in the feed do not line up. JetBrains Mono is here for the other half
- * of that problem: every price, share count, address and signature is set in it
- * with `tabular-nums`, so a column of figures is a column rather than a ragged
- * edge.
+ * Geist is Vercel's variable font — sharper terminals than Inter, better tabular
+ * figure support, and covers weights 100-900. GeistMono replaces JetBrains Mono
+ * for a more cohesive pairing: every price, share count, address and signature
+ * is set in it with `tabular-nums`.
  *
- * These were `next/font/google` for about ten minutes. That version made the
- * build take **18 minutes**: the loader fetches the CSS and the woff2 files
- * during `next build`, and against this network it spent most of that time in
- * `read ETIMEDOUT` and `Retrying 1/3`. The fonts are now two committed woff2
- * files, which takes the network out of the build entirely — it is a fixed cost
- * of ~80 KB in the repo against a build that does not depend on whether Google
- * is reachable.
- *
- * Both are variable fonts covering 400–700, so `weight` declares a range rather
- * than a single cut. They expose themselves as CSS variables rather than
+ * Both are variable fonts and expose themselves as CSS variables rather than
  * concrete families, so globals.css stays the only place that decides what
- * anything is set in.
+ * anything is set in — which is why neither declares a `fallback` list here.
+ * Naming fallbacks in both places produced a stack with `system-ui,
+ * -apple-system, "Segoe UI", sans-serif` in it twice.
  */
-const inter = localFont({
-  src: "./fonts/Inter.woff2",
+const geist = localFont({
+  src: "./fonts/Geist.woff2",
   variable: "--font-sans",
-  weight: "400 700",
-  display: "swap",
-  fallback: ["ui-sans-serif", "system-ui", "-apple-system", "Segoe UI", "sans-serif"]
+  weight: "100 900",
+  display: "swap"
 });
 
-const mono = localFont({
-  src: "./fonts/JetBrainsMono.woff2",
+const geistMono = localFont({
+  src: "./fonts/GeistMono.woff2",
   variable: "--font-mono",
-  weight: "400 700",
-  display: "swap",
-  fallback: ["ui-monospace", "SFMono-Regular", "Menlo", "Consolas", "monospace"]
+  weight: "100 900",
+  display: "swap"
 });
 
 export const metadata: Metadata = {
@@ -47,18 +42,28 @@ export const metadata: Metadata = {
 };
 
 /**
- * `theme-color` so mobile browser chrome matches the app rather than flashing
- * white above a near-black page. Also the reason `<html>` carries a `className`
- * at all — that is where next/font mounts the variables.
+ * `theme-color` so mobile browser chrome matches the app. One light theme now,
+ * so one value — the warm off-white canvas the whole product sits on.
  */
 export const viewport = {
-  themeColor: "#0b0d0e"
-};
+  themeColor: "#f4f3ef",
+  colorScheme: "light"
+} as const;
 
+/**
+ * The wallet provider wraps everything, including the signed-out pages.
+ *
+ * It has to be at the root rather than on the pages that trade, because a wallet
+ * connection is a property of the *browser*, not of a route — and because the
+ * sign-in page is itself a place you connect a wallet. Mounting it per-page
+ * would tear the connection down on every navigation.
+ */
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${inter.variable} ${mono.variable}`}>
-      <body>{children}</body>
+    <html lang="en" className={`${geist.variable} ${geistMono.variable}`}>
+      <body>
+        <WalletProviders>{children}</WalletProviders>
+      </body>
     </html>
   );
 }

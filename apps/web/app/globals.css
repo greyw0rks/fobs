@@ -1,84 +1,148 @@
 /* ==========================================================================
-   FOBS — a dark trading terminal.
+   FOBS — the interface system. "Soft Editorial Fintech".
    ==========================================================================
 
-   Organised as three layers, in this order:
+   One theme, light: the app and the landing share a warm off-white canvas
+   (--paper), one accent (Fobs Blue, --accent), and a soft pastel palette used
+   only as large surfaces behind solid UI.
 
-     1. Tokens    — every colour, size, space and radius. Nothing below this
-                    layer contains a literal hex, so the palette can be read in
-                    one screen.
-     2. Base      — element defaults, focus, scrollbars, selection.
-     3. Components — one block per class, in the order the app renders them.
+   The blend, deliberately:
+     · The trading UI is structured, monochrome and rectangular — dense white
+       cards on a warm canvas, read at 14px.
+     · The brand/marketing layer is softer: large editorial type, subtle pastel
+       gradients, and organic background forms.
 
-   Two rules this file enforces, because they are product rules rather than
-   taste, and both of them are easy to undo by accident:
+   Three layers: tokens, base, components — then the landing, which is the one
+   place allowed its own scale.
 
-     · Green and red are only ever applied to a *number* that was read from the
-       chain or the oracle. Never to a heading, an icon, a border or a button
-       background used as decoration. A green button would train the eye to read
-       "up" where the product means "go", and this app spends a lot of copy
-       telling people not to read things into figures.
+   Two product rules. These are not taste, and they are easy to undo by
+   accident:
 
-     · Nothing here invents elevation with a shadow. Depth is a hairline and a
-       slightly lighter surface. The previous stylesheet put one very large
-       shadow (0 18px 50px) on every card regardless of whether it was floating
-       above anything, which flattened the whole page into one plane.
+     · Green and red sit only on a figure read from the chain or the oracle.
+       Never a heading, an icon, a decorative border, or a button standing in
+       for "go". The primary button is Fobs Blue for exactly this reason.
 
-   Also note what is *not* here: there is no `prefers-color-scheme` block and no
-   theme toggle. This app is deliberately dark, in the way a terminal is, and a
-   light variant would be a second design rather than a second palette.
-   `color-scheme: dark` below is what makes the native controls agree — form
-   fields, scrollbars, autofill — instead of rendering light-on-dark.
+     · Never render a figure the indexer did not read. Where a price is absent
+       the interface says so — "price not read", an em dash, a stated count of
+       excluded holdings. There is deliberately no "empty value" style that
+       would make a missing number look like a real one.
+
+   Two card families give the interface its rhythm:
+     · Utility cards (.card, .panel, .data-table, .stat): 12px radius, a thin
+       hairline border, white, a whisper of shadow. The working surfaces.
+     · Editorial cards (.card.soft / .panel.soft / .spotlight): 20px radius,
+       a soft pastel surface, no border, a softer float. Social / FOMO /
+       highlight surfaces only.
+
+   Disclosure is a warm soft-yellow notice (--warn-*). It is still a safety
+   surface — keep it visually distinct from the plain cards — but it now lives
+   in the warm palette rather than a hard amber-on-black.
    ========================================================================== */
 
 :root {
-  color-scheme: dark;
+  /* Light. Native controls, scrollbars and autofill follow. */
+  color-scheme: light;
 
-  /* -- Surfaces -----------------------------------------------------------
-     One background, one recessed surface, one raised surface. Cards sit on
-     `--sunken`; anything that needs to sit *above* a card (a chip, an avatar)
-     uses `--raised` so it does not disappear into the card it is on. */
-  --paper: #0b0d0e;
-  --sunken: #121517;
-  --raised: #16191c;
-  --hairline: #1e2427;
-  --hairline-strong: #2b3236;
+  /* -- Surfaces (warm, light) --------------------------------------------- *
+   * Names are unchanged from the old dark system on purpose: every component
+   * references these by name, so re-pointing the values here re-themes the
+   * whole product without touching markup. --sunken/--raised/--elevated are
+   * kept as names; in a light theme they read as "card / hover / lifted"
+   * rather than literal depth. */
+  --paper: #f4f3ef; /* bg-app — warm off-white canvas (matches --fobs-bg) */
+  --surface: #ffffff; /* surface-card — sidebar, white surfaces on the canvas */
+  --card: #ffffff; /* utility cards */
+  --sunken: #ffffff; /* was the darkest; now the plain card white */
+  --raised: #eeeee9; /* surface-subtle — hover / inactive / secondary fills (warm) */
+  --elevated: #ffffff; /* lifted surfaces (menus, sheets) */
+  --well: #eeeee9; /* surface-subtle — inputs, chart beds (warm) */
+  --hairline: #e3e2dc; /* the card border (matches --fobs-border) */
+  --hairline-strong: #d3d2ca;
 
-  /* -- Text ---------------------------------------------------------------
-     `--faint` is deliberately only used for non-essential marks (list
-     counters, separators). It does not meet AA on `--paper`, so it must never
-     carry a figure or a label someone needs to read. */
-  --ink: #e8ebe9;
-  --muted: #7c8783;
-  --faint: #5c6461;
+  /* -- Text — warm near-black -------------------------------------------- */
+  --ink: #111312; /* text-primary — body, titles, large numbers (--fobs-text) */
+  --primary: #111312; /* headings */
+  --muted: #777872; /* text-muted — labels, timestamps, subtitles (--fobs-muted) */
+  --faint: #9b9c95; /* placeholders, disabled icons */
 
-  /* -- Semantic -----------------------------------------------------------
-     `--up` / `--down` are the trade colours and appear on figures only.
-     `--fomo` is the one accent: the FOMO action, the active nav marker and
-     the logo mark. It is not used for decoration. */
-  --up: #3ddc84;
-  --down: #ff5c5c;
-  --fomo: #f7c948;
-  --info: #6ea8ff;
+  /* -- Primary — near-black slate. Every "go" control is dark on white. ----- *
+   * The reference is unambiguous: buttons, the active tab, the active nav item,
+   * and the segmented "1D" selector are all near-black. The chart blue is NOT
+   * the button colour — it is a *data accent* (chart lines, focus, links).
+   * Keeping the two separate is what makes the UI read as a precise monochrome
+   * trading tool with restrained blue, rather than a "blue app". */
+  --primary-ink: #080909; /* accent-primary / pill-active (--fobs-black) */
+  --primary-ink-hover: #1f2120;
+  --on-primary: #ffffff;
 
-  /* Disclosure. Amber, because a disclosure that reads as a footnote is a
-     disclosure that does not get read, and this build has six pages of
-     load-bearing disclosure copy. */
-  --warn-bg: #2a2205;
-  --warn-ink: #f5d98a;
-  --warn-ink-dim: #d9c07a;
-  --warn-rule: #f0a100;
+  /* -- Accent — the chart/interaction blue (not the primary) --------------- */
+  --accent: #3175c6; /* color-chart — line charts, focus states (--fobs-blue) */
+  --accent-hover: #285f9f;
+  --accent-strong: #1f4e85; /* filled accent surfaces carrying white text; ≥ AA */
+  --accent-tint: #dceafa; /* --fobs-blue-soft — subtle accent wash */
+  /**
+   * The old system keyed a great many call-sites on --fomo* (the primary
+   * button, tabs, the active state). Those are the dark-primary controls now,
+   * so --fomo* is aliased onto the primary ink — the violet is gone, and FOMO's
+   * distinct identity comes from the soft editorial card it sits on, not colour.
+   * (The chart line and links reference --accent directly, so they stay blue.)
+   */
+  --fomo: var(--primary-ink);
+  --fomo-hover: var(--primary-ink-hover);
+  --fomo-solid: var(--primary-ink);
+  --info: var(--accent);
 
-  /* -- Type ---------------------------------------------------------------
-     A real scale, which the previous stylesheet did not have: it stepped
-     12 → 20 → 24 → 32 with no relationship between them. */
+  /* -- Semantic — bull/bear ----------------------------------------------- *
+   * color-positive / color-negative from the spec. These are the price
+   * colours; on their own light tint (badge-bull/bear) they clear AA, and as a
+   * bold figure on white they read as trend at a glance. */
+  --up: #23845b; /* --fobs-green */
+  --down: #c94c4c; /* --fobs-red */
+  --up-ink: #1a6b49; /* deeper green for +% text on white where AA matters */
+  --down-ink: #a83b3b; /* deeper red */
+  --up-bg: #dceee5; /* --fobs-green-soft — badge-bull surface */
+  --down-bg: #f5dcdc; /* --fobs-red-soft — badge-bear surface */
+  /* Ink for the rare filled buy/sell control — white clears AA on both. */
+  --ink-on-up: #ffffff;
+  --ink-on-down: #ffffff;
+
+  /* -- Soft editorial palette (mesh-gradient surfaces only) --------------- *
+   * High-key pastels: baby blue, lavender/indigo, violet, blush pink, mint. */
+  --soft-blue: #dceafa; /* --fobs-blue-soft */
+  --lavender: #e7e0f5; /* warm indigo wash */
+  --soft-violet: #dfd2f2; /* --fobs-purple */
+  --soft-peach: #f5ddd2; /* --fobs-peach */
+  --soft-yellow: #f2e8bd; /* --fobs-yellow */
+  --soft-mint: #dcece3; /* --fobs-mint */
+  /* Ink dark enough to read on any of the pastels above. */
+  --soft-ink: #111312;
+
+  /* Disclosure. A warm soft-yellow notice — still a distinct safety surface. */
+  --warn-bg: #faf1cf;
+  --warn-ink: #6b5410;
+  --warn-ink-dim: #8a7328;
+  --warn-rule: #d9a600;
+
+  /* -- Tints -------------------------------------------------------------- */
+  --fomo-tint: var(--accent-tint);
+  --up-tint: var(--up-bg);
+  --down-tint: var(--down-bg);
+
+  /* -- Type --------------------------------------------------------------- */
   --t-xs: 11px;
   --t-sm: 12px;
   --t-base: 14px;
   --t-md: 16px;
   --t-lg: 20px;
-  --t-xl: 28px;
+  --t-xl: 30px;
   --t-2xl: 40px;
+  --t-3xl: 56px;
+  --t-4xl: 72px; /* editorial display — landing only */
+
+  --ls-tight: -0.025em;
+  --ls-normal: 0;
+  --ls-wide: 0.04em;
+  --ls-caps: 0.12em;
 
   /* -- Space / shape ------------------------------------------------------ */
   --s-1: 4px;
@@ -88,62 +152,121 @@
   --s-5: 24px;
   --s-6: 32px;
   --s-7: 48px;
-  --radius: 4px;
+  --s-8: 64px;
+  --s-9: 80px;
+  --s-10: 96px;
+
+  --radius-sm: 8px; /* micro tags, badges (rounded-lg) */
+  --radius: 16px; /* utility cards, panels, inputs (rounded-2xl) */
+  --radius-lg: 16px;
+  --radius-xl: 24px; /* editorial / soft family, sheets */
   --radius-pill: 999px;
 
-  /* -- Fonts --------------------------------------------------------------
-     Set by next/font in app/layout.tsx. The fallbacks matter: they are what
-     renders during `display: swap` and on the off chance the loader fails. */
-  --font-sans: var(--font-sans), Inter, ui-sans-serif, system-ui, -apple-system,
+  /* -- Measure ------------------------------------------------------------ */
+  --shell-max: 1280px;
+  --content-max: 1080px; /* the app content column, right of the sidebar */
+  --prose-max: 720px;
+  --sidebar-w: 248px;
+
+  /* -- Elevation ---------------------------------------------------------- *
+   * Light-theme shadows: soft, low-opacity, warm-neutral. The editorial cards
+   * lean on --shadow-md to look like they float inside the soft canvas. */
+  --shadow-xs: 0 1px 2px rgba(17, 15, 10, 0.04);
+  --shadow-sm: 0 1px 2px rgba(17, 15, 10, 0.04), 0 1px 3px rgba(17, 15, 10, 0.06);
+  --shadow-md: 0 4px 16px rgba(17, 15, 10, 0.06), 0 1px 3px rgba(17, 15, 10, 0.04);
+  --shadow-lg: 0 12px 40px rgba(17, 15, 10, 0.08), 0 4px 12px rgba(17, 15, 10, 0.05);
+  --shadow-xl: 0 24px 64px rgba(17, 15, 10, 0.12), 0 8px 24px rgba(17, 15, 10, 0.07);
+  /* No coloured glow in the light theme — nothing emits light. "Glow" is now a
+     neutral lift so the black primary button rises on hover rather than haloing. */
+  --shadow-glow: 0 6px 18px rgba(17, 15, 10, 0.18);
+  --shadow-up: 0 4px 14px rgba(11, 132, 87, 0.16);
+  --shadow-down: 0 4px 14px rgba(209, 44, 44, 0.14);
+
+  /* -- Bevels ------------------------------------------------------------- *
+   * On a light surface an inset white highlight does nothing. Kept as names,
+   * neutralised to a hairline top edge so nothing that references them breaks. */
+  --highlight-top: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  --highlight-inner: inset 0 1px 1px rgba(255, 255, 255, 0.5);
+
+  /* -- "Glass" — now solid light surfaces (soft depth, not blur) ----------- *
+   * The reference is explicit: soft depth behind solid UI, not glassmorphism.
+   * These names survive so the nav/menu/sheet rules resolve, but they are near
+   * -opaque warm whites with a light hairline. --blur is a no-op. */
+  --glass: rgba(250, 249, 245, 0.92);
+  --glass-solid: #ffffff;
+  --glass-border: var(--hairline);
+  --glass-border-hover: var(--hairline-strong);
+  --blur: saturate(105%) blur(8px);
+
+  /* -- Motion ------------------------------------------------------------- */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease: var(--ease-out);
+  --duration-instant: 100ms;
+  --duration-fast: 160ms;
+  --duration-normal: 240ms;
+  --duration-slow: 400ms;
+  --transition-fast: var(--duration-fast) var(--ease-out);
+  --transition-med: var(--duration-normal) var(--ease-out);
+  --transition-slow: var(--duration-slow) var(--ease-out);
+
+  /* -- Primary button fill — solid near-black (kept as a "gradient" name so the
+        many .button / .tab.active call-sites resolve without renaming). ----- */
+  --fomo-gradient: var(--primary-ink);
+  --fomo-gradient-hover: var(--primary-ink-hover);
+
+  /* -- promo-gradient — the FOMO card / landing banner mesh (from the spec). */
+  --soft-gradient: linear-gradient(135deg, #eef2ff 0%, #fce7f3 50%, #e0f2fe 100%);
+
+  /* -- Avatar hues. Saturated enough to hold their own on white, none of them
+        reading as the green/red status colours. --------------------------- */
+  --avatar-0: linear-gradient(135deg, #6366f1, #3175c6);
+  --avatar-1: linear-gradient(135deg, #ec4899, #f43f5e);
+  --avatar-2: linear-gradient(135deg, #0d9488, #0891b2);
+  --avatar-3: linear-gradient(135deg, #ea8b0a, #ea580c);
+  --avatar-4: linear-gradient(135deg, #7c3aed, #6366f1);
+
+  /* -- Fonts ---------------------------------------------------------------
+        `next/font/local` in `app/layout.tsx` mounts `--font-sans` and
+        `--font-mono` on <html>. Those two must not be redeclared here. `:root`
+        *is* <html>, so `--font-sans: var(--font-sans), ui-sans-serif, …` is a
+        self-reference, and CSS resolves a cycle to the guaranteed-invalid
+        value: both variables computed to the empty string, so every
+        `font-family: var(--font-sans)` was invalid at computed-value time and
+        fell back to the initial value — Times New Roman — on every page, with
+        both Geist faces never even fetched. The composed stacks therefore get
+        names of their own, and the `var()` fallback covers the case where the
+        font class fails to mount at all. ---------------------------------- */
+  --sans: var(--font-sans, ui-sans-serif), system-ui, -apple-system,
     "Segoe UI", sans-serif;
-  --font-mono: var(--font-mono), "JetBrains Mono", ui-monospace, SFMono-Regular,
-    Menlo, Consolas, monospace;
-
-  /* -- Legacy aliases -----------------------------------------------------
-     These exist for exactly one reason: JSX refers to some of them directly,
-     in inline styles that a CSS-only restyle cannot reach. `TradeConfirmation`
-     in components/TradeCard.tsx writes `borderLeft: "4px solid var(--green)"`
-     by hand. Keeping the old names pointing at the new values means that call
-     site keeps working, and a miss elsewhere degrades to the right colour
-     rather than to an invalid one.
-
-     They are aliases, not a second palette: change the semantic token above,
-     not the name here. Anything written from scratch should use the semantic
-     name. */
-  --bg: var(--paper);
-  --panel: var(--sunken);
-  --line: var(--hairline);
-  --soft: var(--sunken);
-  --green: var(--up);
-  --green-dark: var(--up);
-  --red: var(--down);
-  --gold: var(--warn-rule);
-  --blue: var(--info);
-  /* Every `.card` and `.panel` still says `box-shadow: var(--shadow)`. The
-     layout now carries depth with hairlines instead, so the value is `none`
-     and those declarations become no-ops rather than being hunted down. */
-  --shadow: none;
+  --mono: var(--font-mono, ui-monospace), SFMono-Regular, Menlo, Consolas,
+    monospace;
 }
 
 /* ==========================================================================
-   2. Base
+   1. Base
    ========================================================================== */
 
 * {
   box-sizing: border-box;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   margin: 0;
-  /* Flat, not a gradient. The previous stylesheet ran a three-stop gradient
-     down the page, which read as a lighting effect on a surface that is
-     supposed to be a terminal. */
   background: var(--paper);
   color: var(--ink);
-  font-family: var(--font-sans);
+  font-family: var(--sans);
   font-size: var(--t-base);
-  line-height: 1.5;
+  line-height: 1.55;
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  min-height: 100vh;
 }
 
 a {
@@ -163,164 +286,96 @@ button {
   color: inherit;
 }
 
-/* The app previously shipped no focus style at all, which made it unusable
-   from the keyboard — tab did move focus, but nothing said where it went.
-   `:focus-visible` rather than `:focus` so a mouse click does not leave a ring
-   behind on every button. */
 :focus-visible {
-  outline: 2px solid var(--fomo);
-  outline-offset: 2px;
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
   border-radius: var(--radius);
 }
 
 ::selection {
   background: var(--fomo);
-  color: var(--paper);
+  color: #fff;
 }
 
-/* Inline code appears in prose (the landing page), in the dev harness and on
-   /sign-in where it names an env var. One rule for all three. */
+::placeholder {
+  color: var(--faint);
+}
+
 code {
-  font-family: var(--font-mono);
+  font-family: var(--mono);
   font-size: 0.9em;
-  background: var(--sunken);
+  background: var(--raised);
   border: 1px solid var(--hairline);
-  border-radius: 3px;
-  padding: 1px 5px;
+  border-radius: 4px;
+  padding: 2px 6px;
   color: var(--ink);
+}
+
+/* A thin, dark scrollbar — the default light one is the single brightest
+   thing on the page in a long feed. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--hairline-strong) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--hairline-strong);
+  border-radius: var(--radius-pill);
+  border: 3px solid var(--paper);
 }
 
 /* ==========================================================================
-   3. Components
+   2. Shared page utilities
+   ==========================================================================
+
+   The app chrome (sidebar, top bar, mobile nav) now lives in the warm
+   editorial shell at components/fobs/{shell,navigation,topbar,mobile-nav}.tsx
+   and the marketing header in components/SiteNav.tsx — both authored in
+   Tailwind, so the old `.shell`/`.sidebar`/`.topnav`/`.app-topbar` rules that
+   used to live here have been removed. What remains below are the small
+   shared page utilities the migrated pages still lean on.
    ========================================================================== */
 
-/* -- Shell and navigation ------------------------------------------------- */
-
-.shell {
-  min-height: 100vh;
-  display: grid;
-  grid-template-columns: 248px minmax(0, 1fr);
-}
-
-.sidebar {
-  position: sticky;
-  top: 0;
-  height: 100vh;
-  border-right: 1px solid var(--hairline);
-  padding: var(--s-5) var(--s-4);
-  background: rgba(11, 13, 14, 0.85);
-  backdrop-filter: blur(18px);
-}
-
-.brand {
-  display: flex;
-  gap: var(--s-3);
-  align-items: center;
-  margin-bottom: 26px;
-}
-
-/* The logo is the one place `--fomo` is used as a fill rather than as an
-   action. A single amber square is the whole brand, and it is the only
-   saturated block in the chrome. */
-.mark {
-  width: 32px;
-  height: 32px;
-  flex: none;
-  display: grid;
-  place-items: center;
-  border-radius: var(--radius);
-  color: var(--paper);
-  font-weight: 800;
-  font-size: var(--t-md);
-  background: var(--fomo);
-}
-
-.brand h1 {
-  margin: 0;
-  font-size: var(--t-base);
+.eyebrow {
+  display: block;
+  font-size: var(--t-xs);
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: var(--ls-caps);
   text-transform: uppercase;
+  color: var(--fomo);
+  margin-bottom: var(--s-2);
 }
 
-.brand p,
-.muted {
-  color: var(--muted);
-}
-
-.brand p {
-  margin: 1px 0 0;
-  font-size: var(--t-sm);
-}
-
-.nav {
+/* The asset page's headline figure, sitting opposite the title. */
+.asset-price {
   display: grid;
-  gap: 2px;
-}
-
-.nav a,
-.button,
-.secondary {
-  min-height: 40px;
-  border-radius: var(--radius);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  justify-items: end;
   gap: var(--s-2);
-  font-weight: 600;
+  flex: none;
 }
 
-.nav a {
-  justify-content: flex-start;
-  padding: 0 var(--s-3);
-  color: var(--muted);
-}
-
-/* The active marker is an inset shadow rather than a border, so selecting a
-   nav item does not move the text by a pixel as it turns on. */
-.nav a:hover {
-  background: var(--sunken);
-  color: var(--ink);
-}
-
-.nav a.active {
-  background: var(--sunken);
-  color: var(--ink);
-  box-shadow: inset 2px 0 0 var(--fomo);
-}
-
-.main {
-  padding: var(--s-5) var(--s-6);
-  min-width: 0;
-}
-
-.topbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: var(--s-4);
-  margin-bottom: var(--s-4);
-}
-
-.topbar h2 {
-  margin: 0;
-  font-size: var(--t-xl);
-  line-height: 1.15;
+.asset-price .figure {
+  font-size: var(--t-2xl);
+  font-weight: 800;
   letter-spacing: -0.02em;
+  line-height: 1;
 }
 
-.topbar p {
-  margin: var(--s-2) 0 0;
-  color: var(--muted);
-  max-width: 68ch;
-}
-
-/* -- Layout --------------------------------------------------------------- */
+/* -- Two-column body ------------------------------------------------------ */
 
 .grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.45fr) 340px;
-  gap: var(--s-4);
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: var(--s-5);
   align-items: start;
 }
 
@@ -331,20 +386,38 @@ code {
   min-width: 0;
 }
 
-/* -- Surfaces -------------------------------------------------------------
-   Both card and panel are border-defined now. The only difference is the text
-   that tends to live inside them, so they share every rule. */
+.stack {
+  gap: var(--s-4);
+}
 
+/* Sticky rail on wide screens: the trade panel is the reason most people open
+   an asset page, and it should not scroll away. */
+.stack.sticky {
+  position: sticky;
+  top: 104px;
+}
+
+/* ==========================================================================
+   4. Surfaces
+   ========================================================================== */
+
+/* Utility cards — the working surfaces. White, a thin hairline, a whisper of
+   shadow, a structured 12px radius. */
 .card,
 .panel {
   border: 1px solid var(--hairline);
-  background: var(--sunken);
   border-radius: var(--radius);
-  box-shadow: var(--shadow);
+  position: relative;
+  background: var(--card);
+  box-shadow: var(--shadow-sm);
 }
 
 .card {
   padding: var(--s-4);
+  transition:
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast),
+    background var(--transition-fast);
 }
 
 .panel {
@@ -353,166 +426,237 @@ code {
 
 .card:hover {
   border-color: var(--hairline-strong);
+  box-shadow: var(--shadow-md);
 }
 
-/* The post-trade receipt. It carries the trade colour on its edge because that
-   is a real fact about the trade, not decoration — and it is the one card in
-   the feed the eye should find immediately after a fill. */
-.card.confirmed {
-  border-left-width: 3px;
+.card h3,
+.panel h3 {
+  margin: 0 0 var(--s-2);
+  font-size: var(--t-base);
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: var(--primary);
 }
 
-.card.confirmed.buy {
-  border-left-color: var(--up);
+.card p,
+.panel p {
+  margin: var(--s-2) 0 0;
 }
 
-.card.confirmed.sell {
-  border-left-color: var(--down);
+.card p:last-child,
+.panel p:last-child {
+  margin-bottom: 0;
 }
 
-.row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+/* -- Editorial family ----------------------------------------------------- *
+   The softer half of the blend: social / FOMO / highlight surfaces. A larger
+   radius, a soft pastel fill, no border, and a gentle float. These are meant to
+   feel warm and expressive against the dense white utility cards. */
+.card.soft,
+.panel.soft {
+  border: none;
+  border-radius: var(--radius-xl);
+  background: var(--lavender);
+  color: var(--soft-ink);
+  box-shadow: var(--shadow-md);
+}
+
+.card.soft:hover {
+  border: none;
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-2px);
+}
+
+.card.soft h3,
+.panel.soft h3,
+.card.soft .muted,
+.panel.soft .muted {
+  color: var(--soft-ink);
+}
+
+/* Pastel variants — pick the surface to suit the moment. */
+.soft.tone-blue { background: var(--soft-blue); }
+.soft.tone-lavender { background: var(--lavender); }
+.soft.tone-violet { background: var(--soft-violet); }
+.soft.tone-peach { background: var(--soft-peach); }
+.soft.tone-yellow { background: var(--soft-yellow); }
+.soft.tone-mint { background: var(--soft-mint); }
+
+/* A hero-scale editorial surface — a full pastel gradient, for a spotlight
+   (featured stock, portfolio highlight, friend of the week). */
+.spotlight {
+  border: none;
+  border-radius: var(--radius-xl);
+  padding: var(--s-5);
+  background: var(--soft-gradient);
+  color: var(--soft-ink);
+  box-shadow: var(--shadow-md);
+}
+
+/* -- Stat tiles ----------------------------------------------------------- */
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
   gap: var(--s-3);
+  margin-bottom: var(--s-5);
 }
 
-.user {
-  display: flex;
-  align-items: center;
-  gap: var(--s-2);
+.stat {
+  padding: var(--s-4);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  background: var(--card);
+  box-shadow: var(--shadow-sm);
   min-width: 0;
 }
 
-/* Flat, ringed, and set in the ink colour. The old version was a blue-to-green
-   gradient with white initials, which on a near-black page would have been the
-   loudest thing on every row — and it made two dozen people read as two dozen
-   brand marks. */
-.avatar {
-  width: 34px;
-  height: 34px;
-  flex: none;
-  border-radius: var(--radius);
-  display: grid;
-  place-items: center;
-  color: var(--ink);
-  background: var(--raised);
-  border: 1px solid var(--hairline-strong);
+.stat .label {
+  display: block;
+  font-size: var(--t-xs);
   font-weight: 700;
-  font-size: var(--t-sm);
-  letter-spacing: 0.02em;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: var(--s-2);
 }
 
-/* Chips sit on `--sunken` cards, so they carry a border rather than a fill —
-   a filled chip would need `--hairline`, and muted text on `--hairline` is
-   4.2:1, under AA. Outlined, the effective background is the card and the
-   ratio is 4.9:1. */
-.chip,
-.synthetic {
+.stat .value {
+  display: block;
+  font-size: var(--t-lg);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
+  color: var(--primary);
+}
+
+.stat .sub {
+  display: block;
+  margin-top: var(--s-1);
+  font-size: var(--t-sm);
+  color: var(--muted);
+}
+
+/* ==========================================================================
+   5. Controls
+   ========================================================================== */
+
+.button,
+.secondary {
+  min-height: 40px;
+  height: auto;
+  border-radius: var(--radius-pill);
   display: inline-flex;
   align-items: center;
-  height: 22px;
-  padding: 0 var(--s-2);
-  border: 1px solid var(--hairline-strong);
-  background: transparent;
-  border-radius: var(--radius);
-  color: var(--muted);
-  font-size: var(--t-xs);
-  font-weight: 500;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  justify-content: center;
+  gap: var(--s-2);
+  font-weight: 650;
+  font-size: var(--t-base);
+  padding: 0 var(--s-5);
+  transition:
+    transform var(--transition-fast),
+    box-shadow var(--transition-med),
+    border-color var(--transition-fast),
+    background var(--transition-fast),
+    filter var(--duration-fast) var(--ease-out);
+}
+
+.button {
+  color: #fff;
+  background: var(--fomo-gradient);
+  border: 1px solid transparent;
+  letter-spacing: var(--ls-wide);
+  box-shadow: var(--shadow-sm);
+  /*
+   * A button label is a label, not a paragraph. Without this, `.sm` in the nav
+   * wrapped "Enter the feed" onto two lines at 390px and stood 39px tall
+   * beside a 32px sibling, which is what made the mobile bar look like it had
+   * a fault. The row has to make room instead of the label giving way.
+   */
   white-space: nowrap;
 }
 
-/* -- Type ---------------------------------------------------------------- */
-
-.trade-title {
-  font-size: var(--t-lg);
-  line-height: 1.25;
-  letter-spacing: -0.01em;
-  margin: var(--s-3) 0 var(--s-1);
+.button:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-glow);
+  filter: brightness(1.06);
 }
 
-/* Mono with real tabular figures. Applied in JSX to the handful of places that
-   render a price, a size or a running total — it is the difference between a
-   column of numbers and a column of shapes. */
-.num {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-  font-feature-settings: "tnum" 1;
-  letter-spacing: -0.01em;
+.button:active {
+  transform: translateY(0) scale(0.97);
+  box-shadow: none;
+  transition-duration: var(--duration-instant);
 }
 
-/* The line under a feed card's headline: "1,240.00 USDC · 6.79 shares at
-   182.40". One class, because it is the same line in four places. */
-.figures {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-  font-feature-settings: "tnum" 1;
-  font-size: var(--t-sm);
-  letter-spacing: -0.01em;
-  color: var(--muted);
-}
-
-/* -- Buttons -------------------------------------------------------------
-   The primary button is near-white on near-black, not green. Green means "this
-   price went up" everywhere else in this app; a green button would be the same
-   colour saying something else. Buy and sell carry the trade colours because
-   there the colour *is* the meaning. */
-
-.button {
-  padding: 0 var(--s-4);
-  color: var(--paper);
-  background: var(--ink);
+.button.buy,
+.button.sell {
   border: 1px solid transparent;
 }
 
-.button:hover {
-  background: #ffffff;
-}
-
 .button.buy {
-  background: var(--up);
-  border-color: var(--up);
+  background: var(--up-ink);
+  color: var(--ink-on-up);
 }
 
 .button.buy:hover {
-  background: #5ee89a;
+  box-shadow: var(--shadow-up);
+  filter: brightness(1.08);
 }
 
 .button.sell {
-  background: var(--down);
-  border-color: var(--down);
+  background: var(--down-ink);
+  color: var(--ink-on-down);
 }
 
 .button.sell:hover {
-  background: #ff7676;
+  box-shadow: var(--shadow-down);
+  filter: brightness(1.1);
+}
+
+/* The feed's action, and the most-pressed control in the product. */
+.button.fomo {
+  min-height: 38px;
+  padding: 0 var(--s-4);
+  font-weight: 750;
+  font-size: var(--t-sm);
+  letter-spacing: var(--ls-caps);
 }
 
 .fomo {
-  background: var(--fomo);
-  color: var(--paper);
+  background: var(--fomo-gradient);
+  color: #fff;
 }
 
 .fomo:hover {
-  background: #ffd75e;
+  background: var(--fomo-gradient-hover);
 }
 
 .secondary {
   padding: 0 var(--s-4);
-  background: transparent;
-  border: 1px solid var(--hairline-strong);
+  background: var(--raised);
+  border: 1px solid var(--hairline);
   color: var(--ink);
+  box-shadow: var(--shadow-xs);
 }
 
 .secondary:hover {
-  border-color: var(--muted);
-  background: var(--raised);
+  border-color: var(--hairline-strong);
+  background: var(--elevated);
+  transform: translateY(-1px);
 }
 
-/* Error text, not an error button — every call site in this app renders it as
-   a <p>. It was previously styled as a filled red pill and pulled into the
-   button flex group, which made an error message look like a control. */
+.secondary:active {
+  transform: translateY(0) scale(0.97);
+  transition-duration: var(--duration-instant);
+}
+
+.button.sm,
+.secondary.sm {
+  min-height: 32px;
+  padding: 0 var(--s-3);
+  font-size: var(--t-sm);
+}
+
 .danger {
   color: var(--down);
   font-weight: 600;
@@ -521,15 +665,322 @@ code {
 
 .button:disabled,
 .secondary:disabled {
-  opacity: 0.45;
+  opacity: 0.4;
   cursor: not-allowed;
+  filter: grayscale(0.3);
+  transform: none !important;
 }
 
-.button:disabled:hover {
-  background: var(--ink);
+/* -- Chips ---------------------------------------------------------------- */
+
+.chip,
+.synthetic {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 22px;
+  padding: 0 var(--s-2);
+  border: 1px solid var(--hairline);
+  background: var(--raised);
+  border-radius: var(--radius-pill);
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
 }
 
-/* -- Asset and holding rows ----------------------------------------------- */
+.chip.accent {
+  border-color: transparent;
+  background: var(--accent-tint);
+  color: var(--accent-strong);
+}
+
+.chip.new {
+  border-color: transparent;
+  background: var(--accent-tint);
+  color: var(--accent-strong);
+}
+
+/* -- Avatars -------------------------------------------------------------- */
+
+.avatar {
+  width: 36px;
+  height: 36px;
+  flex: none;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  background: var(--avatar-0);
+  font-weight: 700;
+  font-size: var(--t-sm);
+  letter-spacing: 0.02em;
+  box-shadow: 0 0 0 1px var(--hairline);
+}
+
+.avatar.lg {
+  width: 64px;
+  height: 64px;
+  font-size: var(--t-lg);
+}
+
+.avatar[data-hue="1"] { background: var(--avatar-1); }
+.avatar[data-hue="2"] { background: var(--avatar-2); }
+.avatar[data-hue="3"] { background: var(--avatar-3); }
+.avatar[data-hue="4"] { background: var(--avatar-4); }
+
+/* -- Inputs --------------------------------------------------------------- */
+
+.input {
+  height: 48px;
+  width: 100%;
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius);
+  padding: 0 var(--s-3);
+  background: var(--well);
+  color: var(--ink);
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--t-lg);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-tint);
+  outline: none;
+}
+
+.input.search {
+  height: 44px;
+  flex: 1;
+  font-family: var(--sans);
+  font-size: var(--t-base);
+  font-weight: 400;
+  border-radius: var(--radius-pill);
+  padding-left: var(--s-4);
+}
+
+.quote {
+  padding: var(--s-3);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  background: var(--well);
+  display: grid;
+  gap: var(--s-2);
+}
+
+/* -- Segmented control ---------------------------------------------------- */
+
+.segmented {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s-1);
+  padding: 3px;
+  background: var(--well);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-pill);
+}
+
+.segmented button {
+  height: 38px;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  font-weight: 700;
+  color: var(--muted);
+  transition:
+    background var(--transition-fast),
+    color var(--transition-fast),
+    box-shadow var(--transition-fast),
+    transform var(--transition-fast);
+}
+
+.segmented button:hover {
+  color: var(--ink);
+}
+
+.segmented button:active {
+  transform: scale(0.97);
+  transition-duration: var(--duration-instant);
+}
+
+/* The only place a trade colour fills a control: here the colour *is* the
+   meaning. */
+.segmented button.active.buy {
+  background: var(--up-ink);
+  color: var(--ink-on-up);
+  box-shadow: var(--shadow-up);
+}
+
+.segmented button.active.sell {
+  background: var(--down-ink);
+  color: var(--ink-on-down);
+  box-shadow: var(--shadow-down);
+}
+
+/* -- Tabs ----------------------------------------------------------------- */
+
+.tabs {
+  display: flex;
+  gap: var(--s-1);
+  padding: 3px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-pill);
+  background: var(--raised);
+  width: fit-content;
+}
+
+.tab {
+  padding: var(--s-2) var(--s-4);
+  border-radius: var(--radius-pill);
+  font-size: var(--t-sm);
+  font-weight: 600;
+  color: var(--muted);
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.tab:hover {
+  color: var(--ink);
+}
+
+.tab.active {
+  background: var(--fomo-gradient);
+  color: #fff;
+  box-shadow: var(--shadow-glow);
+}
+
+/* ==========================================================================
+   6. Data display
+   ========================================================================== */
+
+.num {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+  letter-spacing: -0.01em;
+}
+
+.figures {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+  font-size: var(--t-sm);
+  letter-spacing: -0.01em;
+  color: var(--muted);
+}
+
+/* Trend text sits on white, so it uses the darker ink variants for AA. The
+   bright --up/--down stay for fills, dots and badge surfaces. */
+.price-up,
+.gain {
+  color: var(--up-ink);
+  font-weight: 700;
+}
+
+.price-down,
+.loss {
+  color: var(--down-ink);
+  font-weight: 700;
+}
+
+/* Bull/bear pill badges — a tinted surface with the bright semantic ink. */
+.badge-bull,
+.badge-bear {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  font-size: var(--t-sm);
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+.badge-bull {
+  color: var(--up-ink);
+  background: var(--up-bg);
+}
+
+.badge-bear {
+  color: var(--down-ink);
+  background: var(--down-bg);
+}
+
+/* -- Market table ---------------------------------------------------------
+
+   A grid rather than a <table>: these rows are links, and an <a> wrapping
+   <tr> is invalid. The header row is hidden on narrow screens where the body
+   rows restack into label/value pairs.
+   ------------------------------------------------------------------------- */
+
+.data-table {
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+  background: var(--sunken);
+  overflow: hidden;
+  box-shadow: var(--highlight-top);
+}
+
+.data-head,
+.data-row {
+  display: grid;
+  align-items: center;
+  gap: var(--s-3);
+  padding: var(--s-3) var(--s-4);
+}
+
+.data-head {
+  grid-template-columns: minmax(0, 1.6fr) 1fr 1fr 1fr;
+  border-bottom: 1px solid var(--hairline);
+  background: var(--raised);
+  font-size: var(--t-xs);
+  font-weight: 700;
+  letter-spacing: var(--ls-caps);
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.data-row {
+  grid-template-columns: minmax(0, 1.6fr) 1fr 1fr 1fr;
+  border-bottom: 1px solid var(--hairline);
+  transition: background var(--transition-fast);
+}
+
+.data-row:last-child {
+  border-bottom: 0;
+}
+
+.data-row:hover {
+  background: var(--raised);
+}
+
+.data-row .cell {
+  min-width: 0;
+}
+
+.data-row .cell.right,
+.data-head .right {
+  text-align: right;
+}
+
+.data-row .primary {
+  font-weight: 700;
+  font-size: var(--t-md);
+  letter-spacing: -0.01em;
+}
+
+.data-row .sub {
+  display: block;
+  font-size: var(--t-sm);
+  color: var(--muted);
+  margin-top: 1px;
+}
+
+/* -- Compact asset rows (sidebars) ---------------------------------------- */
 
 .asset-list {
   display: grid;
@@ -546,28 +997,106 @@ code {
   border: 1px solid var(--hairline);
   border-radius: var(--radius);
   background: var(--raised);
+  transition:
+    border-color var(--transition-fast),
+    background var(--transition-fast),
+    transform var(--transition-fast);
 }
 
 .asset-row:hover {
   border-color: var(--hairline-strong);
+  background: var(--elevated);
+  transform: translateX(2px);
 }
 
-/* -- P&L -----------------------------------------------------------------
-   Kept as two classes rather than an inline colour because the caller decides
-   which one applies, and neither is ever applied to a figure whose price was
-   not read — the callers render "price not read" instead, because a made-up
-   gain is worse than no gain. */
+/* -- People tiles --------------------------------------------------------- */
 
-.price-up,
-.gain {
-  color: var(--up);
-  font-weight: 700;
+.tile-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: var(--s-3);
 }
 
-.price-down,
-.loss {
-  color: var(--down);
-  font-weight: 700;
+.tile {
+  display: grid;
+  gap: var(--s-3);
+  padding: var(--s-4);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+  background: var(--sunken);
+  box-shadow: var(--highlight-top);
+  transition: border-color var(--transition-fast), transform var(--transition-fast);
+}
+
+.tile:hover {
+  border-color: var(--hairline-strong);
+  transform: translateY(-2px);
+}
+
+.tile .tile-stats {
+  font-size: var(--t-sm);
+  color: var(--muted);
+}
+
+.tile-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+  flex-wrap: wrap;
+}
+
+/* -- Allocation bar ------------------------------------------------------- */
+
+.allocation {
+  display: flex;
+  overflow: hidden;
+  border-radius: var(--radius-pill);
+  height: 10px;
+  gap: 2px;
+  background: var(--well);
+  margin: var(--s-4) 0 var(--s-2);
+}
+
+.allocation span {
+  flex: none;
+  display: block;
+  border-radius: inherit;
+  transition: filter var(--transition-fast);
+}
+
+.allocation span:hover {
+  filter: brightness(1.2);
+}
+
+/* -- Definition lists ----------------------------------------------------- */
+
+dl,
+dt,
+dd {
+  margin: 0;
+}
+
+dt {
+  font-size: var(--t-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+dd {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: var(--s-2);
+}
+
+dd .chip,
+.panel .chip {
+  font-family: var(--mono);
+  text-transform: none;
+  letter-spacing: 0;
 }
 
 /* -- Chart ---------------------------------------------------------------- */
@@ -576,29 +1105,33 @@ code {
   margin: 0;
 }
 
-.chart figcaption {
-  margin-top: var(--s-3);
-  font-size: var(--t-sm);
-  color: var(--muted);
-}
-
 .chart-grid {
   stroke: var(--hairline);
   stroke-width: 1;
-  stroke-dasharray: 3 5;
+  stroke-dasharray: 4 6;
 }
 
 .chart-line {
   fill: none;
-  stroke: var(--ink);
+  stroke: var(--accent);
   stroke-width: 2;
   stroke-linejoin: round;
   stroke-linecap: round;
+  filter: drop-shadow(0 1px 4px rgba(49, 117, 198, 0.28));
+}
+
+.chart-area {
+  opacity: 0.9;
 }
 
 .chart-dot {
   stroke: var(--sunken);
-  stroke-width: 2;
+  stroke-width: 2.5;
+  transition: r var(--transition-fast);
+}
+
+.chart-dot:hover {
+  r: 6;
 }
 
 .chart-dot.buy {
@@ -609,135 +1142,90 @@ code {
   fill: var(--down);
 }
 
-/* -- Definition lists -----------------------------------------------------
-   Browsers indent `dd` by 40px by default, which reads as a broken layout
-   rather than as a quotation. */
-
-dt,
-dd {
-  margin: 0;
+.chart-crosshair {
+  stroke: var(--muted);
+  stroke-width: 1;
+  stroke-dasharray: 3 4;
+  opacity: 0.55;
 }
 
-dt {
-  font-size: var(--t-xs);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+.chart-cursor {
+  fill: var(--accent);
+  stroke: var(--sunken);
+  stroke-width: 2.5;
+}
+
+.chart-tooltip {
+  font-size: var(--t-sm);
+  background: var(--card, var(--panel, #fff));
+  border: 1px solid var(--hairline);
+  border-radius: 6px;
+  padding: 2px 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  z-index: 2;
+}
+
+.chart figcaption {
+  margin-top: var(--s-3);
+  font-size: var(--t-sm);
   color: var(--muted);
 }
 
-dd {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-  font-weight: 600;
-  color: var(--ink);
-  margin-bottom: var(--s-2);
-}
+/* -- Activity timeline ---------------------------------------------------- */
 
-/* Addresses and signatures are hex, so they are mono wherever they appear. */
-dd .chip,
-.panel .chip {
-  font-family: var(--font-mono);
-  text-transform: none;
-  letter-spacing: 0;
-}
-
-/* -- Trade panel ---------------------------------------------------------- */
-
-.trade-panel {
+.timeline {
   display: grid;
+  gap: 0;
+}
+
+.timeline-item {
+  display: flex;
+  align-items: flex-start;
   gap: var(--s-3);
+  padding: var(--s-4);
+  border-bottom: 1px solid var(--hairline);
+  transition: background var(--transition-fast);
 }
 
-.segmented {
+.timeline-item:last-child {
+  border-bottom: 0;
+}
+
+.timeline-item:hover {
+  background: var(--raised);
+}
+
+.timeline-item .body {
+  flex: 1;
+  min-width: 0;
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--s-1);
-  padding: var(--s-1);
-  background: var(--paper);
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius);
+  gap: 2px;
 }
 
-.segmented button {
-  height: 34px;
-  border-radius: 3px;
-  background: transparent;
-  font-weight: 700;
+/* Unread rows carry a soft blue wash — the data accent marking "new",
+   consistent with the reference's blue unread markers. The "New" chip on the
+   right names it in text. */
+.timeline-item.unread {
+  background: var(--accent-tint);
+}
+
+.timeline-item .meta {
+  font-size: var(--t-sm);
   color: var(--muted);
 }
 
-.segmented button:hover {
-  color: var(--ink);
-}
-
-/* The active rules need both classes: the markup carries `buy` / `sell`
-   permanently and adds `active` to whichever side is selected. Until this
-   restyle the markup only ever emitted `active`, so neither of these matched
-   and the Buy/Sell toggle gave no indication of which side was chosen. */
-.segmented button.active.buy {
-  background: var(--up);
-  color: var(--paper);
-}
-
-.segmented button.active.sell {
-  background: var(--down);
-  color: var(--paper);
-}
-
-.input {
-  height: 46px;
-  width: 100%;
-  border: 1px solid var(--hairline-strong);
-  border-radius: var(--radius);
-  padding: 0 var(--s-3);
-  background: var(--paper);
-  color: var(--ink);
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-  font-size: var(--t-lg);
-  font-weight: 600;
-  letter-spacing: -0.01em;
-}
-
-.input::placeholder {
-  color: var(--faint);
-  font-size: var(--t-base);
-  letter-spacing: 0;
-}
-
-.input:focus {
-  border-color: var(--fomo);
-}
-
-/* Compact variant for the one search field, which should not shout at the
-   same size as an order size. */
-.input.search {
-  height: 40px;
-  flex: 1;
-  font-family: var(--font-sans);
-  font-size: var(--t-base);
-  font-weight: 400;
-}
-
-.quote {
-  padding: var(--s-3);
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius);
-  background: var(--paper);
-  display: grid;
-  gap: var(--s-2);
-}
-
-/* -- Disclosure ----------------------------------------------------------
-   The most important block in the app, and the one the dark theme most easily
-   ruins. It has to stay a *quiet* block — it appears on six pages and is read
-   once, so it should be legible and skippable, not alarming. Amber on near-
-   black at 11.4:1 does that; a saturated fill would not. */
+/* ==========================================================================
+   7. Disclosure
+   ==========================================================================
+   A warm soft-yellow notice. Still a safety surface — keep it visually distinct
+   from a plain card, and do not reduce it to an icon — but it now lives in the
+   soft palette rather than a hard amber-on-black.
+   ========================================================================== */
 
 .disclosure {
-  border: 1px solid var(--warn-rule);
-  border-left-width: 3px;
-  padding: var(--s-3);
+  border: 1px solid color-mix(in srgb, var(--warn-rule) 55%, transparent);
+  border-left: 4px solid var(--warn-rule);
+  padding: var(--s-3) var(--s-4);
   border-radius: var(--radius);
   background: var(--warn-bg);
   color: var(--warn-ink);
@@ -748,8 +1236,6 @@ dd .chip,
   font-weight: 700;
 }
 
-/* Muted text inside a disclosure is amber-tinted rather than grey: `--muted`
-   is 4.2:1 on `--warn-bg`, which fails AA. */
 .disclosure .muted {
   color: var(--warn-ink-dim);
 }
@@ -760,11 +1246,9 @@ dd .chip,
   text-underline-offset: 2px;
 }
 
-/* A code chip inside a disclosure sits on `--warn-bg`, where a `--sunken`
-   recess reads as a hole. */
 .disclosure code {
-  background: rgba(0, 0, 0, 0.25);
-  border-color: var(--warn-rule);
+  background: color-mix(in srgb, var(--warn-rule) 16%, #fff);
+  border-color: color-mix(in srgb, var(--warn-rule) 45%, transparent);
   color: var(--warn-ink);
 }
 
@@ -779,41 +1263,208 @@ dd .chip,
   color: var(--warn-rule);
 }
 
-/* -- Allocation bar -------------------------------------------------------
-   The percentage widths are the whole point of the bar, so the slices must not
-   be shrunk to fit. */
+/* ==========================================================================
+   8. Trade card and panels
+   ========================================================================== */
 
-.allocation {
+.trade-card {
+  border-left: 3px solid var(--hairline);
+}
+
+.trade-card.buy {
+  border-left-color: var(--up);
+}
+
+.trade-card.sell {
+  border-left-color: var(--down);
+}
+
+.trade-hero {
   display: flex;
-  overflow: hidden;
-  border-radius: var(--radius);
-  height: 6px;
-  gap: 2px;
-  background: var(--paper);
-  margin: var(--s-4) 0;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--s-3);
+  margin-top: var(--s-3);
 }
 
-.allocation span {
-  flex: none;
-  display: block;
+.trade-hero .trade-title {
+  margin: 0 0 var(--s-1);
 }
 
-/* -- Dev harness ----------------------------------------------------------
-   Each event line is tagged with its kind. Two colours that appear nowhere
-   else in the app, so they stay classes rather than tokens — but classes, so
-   the harness moves with a palette change like everything else. */
-
-.ev-trade {
-  color: var(--up);
+.trade-title {
+  font-size: var(--t-lg);
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  margin: var(--s-3) 0 var(--s-1);
+  font-weight: 700;
 }
 
-.ev-notify {
-  color: var(--info);
+.trade-amount {
+  font-size: var(--t-lg);
+  font-weight: 800;
 }
 
-/* -- Live connection ------------------------------------------------------
-   Was three inline styles in AppShell.tsx. A dot whose colour says whether the
-   feed is actually connected, so it is allowed a colour of its own. */
+.card-footer {
+  display: flex;
+  align-items: center;
+  gap: var(--s-4);
+  margin-top: var(--s-3);
+  padding-top: var(--s-3);
+  border-top: 1px solid var(--hairline);
+  font-size: var(--t-sm);
+  flex-wrap: wrap;
+}
+
+.card-footer a {
+  color: var(--muted);
+  transition: color var(--transition-fast);
+}
+
+.card-footer a:hover {
+  color: var(--fomo);
+}
+
+.trade-panel {
+  display: grid;
+  gap: var(--s-3);
+}
+
+/* -- Confirmation receipt ------------------------------------------------- */
+
+.card.confirmed {
+  border-left: 3px solid var(--fomo);
+  background: color-mix(in srgb, var(--fomo) 6%, var(--sunken));
+}
+
+.card.confirmed.buy {
+  border-left-color: var(--up);
+}
+
+.card.confirmed.sell {
+  border-left-color: var(--down);
+}
+
+/* -- Sheet / modal -------------------------------------------------------- */
+
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(31, 28, 20, 0.32);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--s-4);
+  animation: fade-in 0.2s var(--ease-out);
+}
+
+.sheet {
+  background: var(--elevated);
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius-xl);
+  width: 100%;
+  max-width: 440px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow-xl);
+  animation: sheet-in 0.35s var(--ease-drawer);
+}
+
+.sheet-handle {
+  width: 36px;
+  height: 4px;
+  border-radius: var(--radius-pill);
+  background: var(--hairline-strong);
+  margin: var(--s-2) auto 0;
+}
+
+.sheet-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+  padding: var(--s-4);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.sheet-header h3 {
+  margin: 0;
+  font-size: var(--t-md);
+  font-weight: 700;
+}
+
+.sheet-body {
+  padding: var(--s-4);
+}
+
+/* ==========================================================================
+   9. Utilities
+   ========================================================================== */
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+}
+
+.user {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  min-width: 0;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.text-right {
+  text-align: right;
+}
+
+.section-heading {
+  margin: var(--s-2) 0 0;
+  font-size: var(--t-xs);
+  font-weight: 700;
+  letter-spacing: var(--ls-caps);
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.search-bar {
+  margin-bottom: var(--s-5);
+  max-width: 560px;
+}
+
+.feed-status {
+  margin-bottom: var(--s-3);
+  font-size: var(--t-sm);
+}
+
+.feed-footer {
+  margin-top: var(--s-4);
+  justify-content: center;
+}
+
+.empty {
+  display: grid;
+  gap: var(--s-2);
+  justify-items: start;
+  padding: var(--s-6) var(--s-4);
+  text-align: left;
+  border: 1px dashed var(--hairline-strong);
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--sunken) 60%, transparent);
+}
+
+.empty h3 {
+  margin: 0;
+}
+
+/* -- Live connection ------------------------------------------------------ */
 
 .live-dot {
   display: inline-flex;
@@ -823,272 +1474,1304 @@ dd .chip,
 
 .live-dot::before {
   content: "";
-  width: 6px;
-  height: 6px;
+  width: 7px;
+  height: 7px;
   border-radius: var(--radius-pill);
   background: var(--faint);
 }
 
 .live-dot.on::before {
   background: var(--up);
+  box-shadow: 0 0 6px var(--up);
+  animation: live-pulse 2s var(--ease-out) infinite;
 }
 
 .live-dot.off::before {
   background: var(--fomo);
 }
 
-/* -- Feed view switcher --------------------------------------------------- */
+/* -- Dev harness ---------------------------------------------------------- */
 
-.tabs {
-  display: flex;
-  gap: var(--s-1);
-  margin: 0 0 var(--s-4);
-  padding: var(--s-1);
+.ev-trade {
+  color: var(--up);
+}
+
+.ev-notify {
+  color: var(--info);
+}
+
+.event-log {
+  max-height: 320px;
+  overflow-y: auto;
+  font-family: var(--mono);
+  font-size: var(--t-sm);
+  background: var(--well);
   border: 1px solid var(--hairline);
   border-radius: var(--radius);
-  background: var(--sunken);
-  width: fit-content;
+  padding: var(--s-3);
 }
 
-.tab {
-  padding: var(--s-2) var(--s-4);
-  border-radius: 3px;
-  font-size: var(--t-sm);
-  font-weight: 600;
-  color: var(--muted);
-  text-decoration: none;
-  transition: background 0.15s ease, color 0.15s ease;
+.event-log > div {
+  padding: 2px 0;
 }
 
-.tab:hover {
-  color: var(--ink);
-  background: var(--raised);
+.dev-user {
+  margin-bottom: var(--s-3);
 }
 
-.tab.active {
-  background: var(--ink);
-  color: var(--paper);
+.dev-user:last-child {
+  margin-bottom: 0;
+}
+
+/* -- Badge ---------------------------------------------------------------- */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: var(--radius-pill);
+  background: var(--fomo-solid);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  box-shadow: 0 0 0 2px var(--paper);
 }
 
 /* ==========================================================================
-   Landing, auth and legal pages
+   10. Landing
    ==========================================================================
+   The one place in the product allowed a display scale. Everything above is
+   the working interface: dense, quiet, and built to be read at 14px.
+   ========================================================================== */
 
-   These five classes — .landing, .hero, .hero-body, .landing-section, .steps —
-   were used by app/page.tsx, app/welcome/page.tsx, app/sign-in/page.tsx,
-   app/terms/page.tsx and app/dev/page.tsx, and none of them was ever defined.
-   Those pages have been rendering as unstyled browser defaults: a full-bleed
-   serif-ish wall with a 40px-indented <ol> in the middle of it.
-
-   They are a different reading mode from the app — long-form prose rather than
-   dense rows — so they get their own measure and leading. Body copy here is
-   15px/1.7 at a 68ch measure, and the important words are raised to `--ink`
-   while the rest stays `--muted`. On a dark background it is the contrast
-   between those two that carries the structure, not weight or size. */
-
-.landing {
-  max-width: 760px;
-  margin: 0 auto;
-  padding: var(--s-6) var(--s-5) 96px;
+.scene {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
 }
 
-/* Works standalone too — app/dev/page.tsx uses .hero with no .landing parent. */
+/* The soft environment. Organic pastel forms float behind the hero on the warm
+   canvas — the editorial half of the blend. All flat CSS, so there is no asset
+   to load and no flash before paint. The product UI itself never becomes a
+   blob; these live strictly behind the interface. */
+
+.scene-rings {
+  position: absolute;
+  inset: -10% -10% 0;
+  z-index: -1;
+  pointer-events: none;
+  /* Three inflated blobs — soft-blue, lavender, peach — placed off-centre and
+     heavily blurred so they read as atmosphere, not shapes with edges. */
+  background:
+    radial-gradient(38vw 38vw at 18% 22%, var(--soft-blue) 0%, transparent 60%),
+    radial-gradient(34vw 34vw at 82% 30%, var(--lavender) 0%, transparent 62%),
+    radial-gradient(40vw 40vw at 62% 88%, var(--soft-peach) 0%, transparent 60%),
+    radial-gradient(30vw 30vw at 8% 82%, var(--soft-mint) 0%, transparent 64%);
+  filter: blur(40px);
+  opacity: 0.7;
+  animation: drift 24s var(--ease-in-out) infinite alternate;
+}
+
+/* A faint wash so the blobs settle into the page rather than sitting on it. */
+.scene::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(180deg, transparent 60%, var(--paper) 100%);
+  pointer-events: none;
+}
+
+/* -- Hero ----------------------------------------------------------------- */
+
 .hero {
+  position: relative;
+  min-height: min(82vh, 780px);
+  max-width: var(--shell-max);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  align-items: center;
+  gap: var(--s-8);
+  padding: var(--s-8) var(--s-5) var(--s-9);
+}
+
+.hero-copy {
+  display: grid;
+  justify-items: start;
+  text-align: left;
+  gap: var(--s-5);
+}
+
+.hero-eyebrow {
+  font-size: var(--t-xs);
+  font-weight: 700;
+  letter-spacing: 0.24em;
+  text-indent: 0.24em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.hero-word {
+  margin: 0;
+  /* Editorial headline — a tight grotesk display line, near-black, with the
+     one accented word carried by --accent. Not the old 168px wordmark. */
+  font-size: clamp(42px, 6.4vw, 76px);
+  font-weight: 700;
+  line-height: 1.02;
+  letter-spacing: -0.03em;
+  color: var(--primary);
+}
+
+.hero-word em {
+  font-style: normal;
+  color: var(--accent);
+}
+
+.hero-body {
+  margin: 0;
+  max-width: 48ch;
+  font-size: var(--t-md);
+  line-height: 1.7;
+  color: var(--muted);
+}
+
+.hero-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  flex-wrap: wrap;
+}
+
+.hero-cta {
+  min-height: 52px;
+  padding: 0 var(--s-3) 0 var(--s-6);
+  font-size: var(--t-md);
+}
+
+.hero-cta .arrow {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.18);
+  font-size: var(--t-md);
+  transition: transform var(--transition-fast);
+}
+
+.hero-cta:hover .arrow {
+  transform: translateX(3px);
+}
+
+.hero-stats {
+  display: flex;
+  gap: var(--s-6);
+  flex-wrap: wrap;
+  margin-top: var(--s-4);
+}
+
+.hero-stat {
+  display: grid;
+  gap: 2px;
+  justify-items: start;
+}
+
+.hero-stat .value {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--t-lg);
+  font-weight: 700;
+  color: var(--primary);
+}
+
+/* -- The floating product card ------------------------------------------- *
+   The app's own market board, lifted off the soft canvas — the visual proof
+   the product exists, framed as a solid white surface hovering in the soft
+   environment (soft depth, not glass). */
+.hero-product {
+  border-radius: var(--radius-xl);
+  background: var(--card);
+  border: 1px solid var(--hairline);
+  box-shadow: var(--shadow-xl);
+  overflow: hidden;
+  transform: rotate(0.4deg);
+}
+
+.hero-product-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--s-4) var(--s-4);
+  border-bottom: 1px solid var(--hairline);
+  background: var(--surface);
+}
+
+.hero-product-head .wordmark {
+  font-size: var(--t-md);
+}
+
+.hero-product-body {
+  display: grid;
+}
+
+.hero-product-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: var(--s-3);
+  padding: var(--s-3) var(--s-4);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.hero-product-row:last-child {
+  border-bottom: 0;
+}
+
+.hero-product-row .hpr-sym {
+  font-weight: 700;
+  font-size: var(--t-md);
+  color: var(--primary);
+}
+
+.hero-product-row .hpr-name {
+  color: var(--muted);
+  font-size: var(--t-sm);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hero-product-row .hpr-price {
+  font-weight: 700;
+  color: var(--primary);
+}
+
+/* -- Landing feature row -------------------------------------------------- */
+
+.hero-features {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--s-4);
+  margin-top: var(--s-6);
+  padding: var(--s-5);
+  border-radius: var(--radius);
+  background: var(--card);
+  border: 1px solid var(--hairline);
+  box-shadow: var(--shadow-sm);
+}
+
+.feature {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+}
+
+.feature strong {
+  display: block;
+  color: var(--primary);
+  font-weight: 650;
+}
+
+.feature .muted {
+  display: block;
+  font-size: var(--t-sm);
+}
+
+.feature-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  color: var(--accent);
+  background: var(--accent-tint);
+}
+
+/* -- FOMO promo card ------------------------------------------------------ */
+
+.fomo-promo {
+  display: grid;
+  gap: var(--s-1);
+  position: relative;
+  isolation: isolate;
+}
+
+.fomo-promo-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: var(--s-2);
+}
+
+.fomo-promo-eyebrow {
+  font-size: var(--t-xs);
+  font-weight: 750;
+  letter-spacing: var(--ls-caps);
+  text-transform: uppercase;
+  color: var(--soft-ink);
+}
+
+/* The tilted asset tile — a small claymorphic square lifted off the gradient. */
+.fomo-promo-tile {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  font-size: var(--t-sm);
+  font-weight: 800;
+  color: #fff;
+  background: linear-gradient(135deg, #34d399 0%, #10b981 100%);
+  box-shadow: 0 10px 22px rgba(16, 185, 129, 0.35);
+  transform: rotate(6deg);
+}
+
+.fomo-promo-line {
+  margin: 0;
+  color: var(--soft-ink);
+  font-size: var(--t-sm);
+}
+
+.fomo-promo-sym {
+  margin: 0;
+  font-size: var(--t-xl);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--primary);
+  line-height: 1.1;
+}
+
+.fomo-promo-figures {
+  margin: 0 0 var(--s-3);
+  color: var(--soft-ink);
+  font-weight: 650;
+}
+
+.fomo-promo .button.fomo {
+  justify-self: start;
+}
+
+/* -- Markets mini-table with "Fobs buying" bars --------------------------- */
+
+.market-list {
+  display: grid;
+}
+
+.market-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto 76px;
+  align-items: center;
+  gap: var(--s-3);
+  padding: var(--s-3) var(--s-2);
+  border-bottom: 1px solid var(--hairline);
+  transition: background var(--transition-fast);
+}
+
+.market-row:last-child {
+  border-bottom: 0;
+}
+
+.market-row:hover {
+  background: var(--raised);
+}
+
+.market-row .mr-id {
+  display: grid;
+  min-width: 0;
+}
+
+.market-row .mr-id strong {
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.market-row .mr-id .muted {
+  font-size: var(--t-sm);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.market-row .mr-price {
+  font-weight: 650;
+  color: var(--primary);
+}
+
+.adopt {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  justify-content: flex-end;
+}
+
+.adopt-bar {
+  flex: 1;
+  height: 6px;
+  border-radius: var(--radius-pill);
+  background: var(--raised);
+  overflow: hidden;
+}
+
+.adopt-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+  transition: width var(--transition-med);
+}
+
+.adopt-num {
+  font-size: var(--t-xs);
+  color: var(--muted);
+  min-width: 14px;
+  text-align: right;
+}
+
+.market-legend {
+  margin: var(--s-3) 0 0;
+  font-size: var(--t-xs);
+}
+
+/* -- Trade preset pills --------------------------------------------------- */
+
+.preset-pills {
+  display: flex;
+  gap: var(--s-2);
+  flex-wrap: wrap;
+}
+
+.preset {
+  flex: 1;
+  min-width: 56px;
+  height: 34px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--hairline);
+  background: var(--raised);
+  color: var(--muted);
+  font-size: var(--t-sm);
+  font-weight: 650;
+  transition:
+    border-color var(--transition-fast),
+    color var(--transition-fast),
+    background var(--transition-fast);
+}
+
+.preset:hover {
+  color: var(--ink);
+  border-color: var(--hairline-strong);
+}
+
+.preset.active {
+  color: var(--on-primary);
+  background: var(--primary-ink);
+  border-color: var(--primary-ink);
+}
+
+/* -- Profile: summary, tabs, activity stream ------------------------------ */
+
+.profile-summary {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--s-4);
-  padding-bottom: var(--s-4);
-  border-bottom: 1px solid var(--hairline);
-  margin-bottom: var(--s-7);
+  margin-bottom: var(--s-5);
+  padding: var(--s-4) var(--s-5);
 }
 
-/* `.brand` carries a 26px bottom margin for the sidebar. In a hero that margin
-   is dead space above the rule. */
-.hero .brand {
-  margin-bottom: 0;
-}
-
-.hero-body {
-  padding-bottom: var(--s-6);
-  border-bottom: 1px solid var(--hairline);
-  margin-bottom: var(--s-7);
-}
-
-.hero-body h2 {
-  font-size: var(--t-2xl);
-  line-height: 1.08;
-  letter-spacing: -0.03em;
-  margin: 0 0 var(--s-4);
-  max-width: 18ch;
-}
-
-.hero-body p {
-  font-size: var(--t-md);
-  line-height: 1.65;
-  color: var(--muted);
-  margin: 0 0 var(--s-5);
-  max-width: 60ch;
-}
-
-.hero-body strong {
-  color: var(--ink);
-}
-
-.landing-section {
-  margin-bottom: var(--s-7);
-}
-
-.landing-section h3 {
+.profile-summary .label {
+  display: block;
   font-size: var(--t-xs);
+  font-weight: 700;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
-  font-weight: 600;
   color: var(--muted);
-  margin: 0 0 var(--s-3);
+  margin-bottom: var(--s-1);
 }
 
-.landing-section p {
-  font-size: 15px;
-  line-height: 1.7;
-  color: var(--muted);
-  max-width: 68ch;
-  margin: 0 0 var(--s-3);
+.profile-summary .value {
+  display: block;
+  font-size: var(--t-xl);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--primary);
 }
 
-.landing-section strong {
-  color: var(--ink);
+.profile-tabs {
+  margin-bottom: var(--s-5);
+}
+
+.tab-count {
+  opacity: 0.7;
+  font-weight: 700;
+}
+
+.activity-stream {
+  display: grid;
+}
+
+.activity-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: var(--s-3);
+  padding: var(--s-3) 0;
+  border-bottom: 1px solid var(--hairline);
+  transition: background var(--transition-fast);
+}
+
+.activity-row:first-child {
+  padding-top: 0;
+}
+
+.activity-row:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.activity-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  font-size: var(--t-md);
+  font-weight: 800;
+  line-height: 1;
+}
+
+.activity-icon.buy {
+  color: var(--up-ink);
+  background: var(--up-bg);
+}
+
+.activity-icon.sell {
+  color: var(--down-ink);
+  background: var(--down-bg);
+}
+
+.activity-body {
+  display: grid;
+  min-width: 0;
+}
+
+.activity-body strong {
+  color: var(--primary);
+  font-weight: 650;
+}
+
+.activity-body .muted {
+  font-size: var(--t-sm);
+}
+
+.activity-amount {
+  font-weight: 700;
+  color: var(--primary);
+  white-space: nowrap;
+}
+
+/* -- Share trade card ----------------------------------------------------- *
+   The one dark editorial surface in the product. Built to leave the app — a
+   screenshot or a link — and still read as FOBS. */
+
+.share-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-4);
+  padding: var(--s-6) var(--s-4);
+}
+
+.share-eyebrow {
+  font-size: var(--t-xs);
+  font-weight: 650;
+  letter-spacing: var(--ls-caps);
+  text-transform: uppercase;
+}
+
+.share-card {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  max-width: 460px;
+  border-radius: var(--radius-xl);
+  background: #111312;
+  color: #fff;
+  box-shadow: var(--shadow-xl);
+  isolation: isolate;
+}
+
+.share-blob {
+  position: absolute;
+  width: 260px;
+  height: 260px;
+  border-radius: 50%;
+  filter: blur(40px);
+  z-index: -1;
+}
+
+.share-blob-a {
+  top: -90px;
+  right: -80px;
+  background: rgba(59, 130, 246, 0.45);
+}
+
+.share-blob-b {
+  bottom: -90px;
+  left: -80px;
+  background: rgba(169, 138, 212, 0.35);
+}
+
+.share-inner {
+  position: relative;
+  display: grid;
+  gap: var(--s-6);
+  padding: var(--s-6);
+}
+
+.share-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.share-head .wordmark {
+  color: #fff;
+}
+
+.share-net {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  padding: 4px var(--s-3);
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.1);
+  font-size: var(--t-xs);
   font-weight: 600;
+  letter-spacing: var(--ls-wide);
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.8);
 }
 
-.landing-section em {
-  color: var(--ink);
-  font-style: italic;
+.share-lede .muted {
+  color: rgba(255, 255, 255, 0.55);
 }
 
-/* A disclosure rendered as a landing section — `.landing-section h3` and
-   `.landing-section p` above set `--muted`, which is 4.2:1 on `--warn-bg` and
-   fails AA. Two classes here rather than one, so this beats them on
-   specificity instead of depending on which block happens to come last. */
-.landing-section.disclosure h3,
-.landing-section.disclosure p,
-.landing-section.disclosure strong {
-  color: var(--warn-ink);
+.share-asset {
+  display: flex;
+  align-items: center;
+  gap: var(--s-4);
+  margin-top: var(--s-3);
 }
 
-/* Inline links inside prose. The global `a { text-decoration: none }` above is
-   right for nav and cards and wrong here: on /terms and the landing page it
-   made every inline link indistinguishable from the sentence around it. */
-.landing a:not(.button):not(.secondary):not(.brand) {
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  text-decoration-color: var(--hairline-strong);
-  transition: text-decoration-color 0.15s ease;
+.share-tile {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  background: #fff;
+  color: #111312;
+  font-size: var(--t-md);
+  font-weight: 800;
 }
 
-.landing a:not(.button):not(.secondary):not(.brand):hover {
-  text-decoration-color: var(--fomo);
+.share-asset h1 {
+  margin: 0;
+  font-size: var(--t-2xl);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1;
 }
 
-/* The "How it works" list. A real ordered list rather than a styled one: the
-   counter is in the gutter, in mono, and deliberately `--faint` because the
-   number is navigational and the sentence is the content. */
+.share-asset .muted {
+  margin: var(--s-1) 0 0;
+}
+
+.share-figure .muted {
+  color: rgba(255, 255, 255, 0.55);
+  font-size: var(--t-sm);
+}
+
+.share-figure p {
+  margin: var(--s-1) 0;
+  font-size: var(--t-2xl);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.share-foot {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+}
+
+.share-foot strong {
+  display: block;
+  font-weight: 700;
+}
+
+.share-foot .muted {
+  color: rgba(255, 255, 255, 0.4);
+  font-size: var(--t-xs);
+}
+
+.share-actions {
+  display: flex;
+  gap: var(--s-2);
+}
+
+.share-back {
+  font-size: var(--t-sm);
+}
+
+.hero-stat .label {
+  font-size: var(--t-xs);
+  font-weight: 650;
+  letter-spacing: var(--ls-caps);
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* -- Landing sections ----------------------------------------------------- */
+
+.section {
+  position: relative;
+  max-width: var(--shell-max);
+  margin: 0 auto;
+  padding: var(--s-9) var(--s-5);
+}
+
+.section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s-4);
+  margin-bottom: var(--s-6);
+  flex-wrap: wrap;
+}
+
+.section-title {
+  margin: 0;
+  font-size: var(--t-xl);
+  font-weight: 700;
+  letter-spacing: var(--ls-tight);
+}
+
+.section-lede {
+  margin: var(--s-2) 0 0;
+  color: var(--muted);
+  max-width: 62ch;
+}
+
+.section-action {
+  font-size: var(--t-sm);
+  font-weight: 650;
+  color: var(--fomo);
+  white-space: nowrap;
+}
+
+.section-action:hover {
+  color: var(--fomo-hover);
+}
+
+/* -- How it works --------------------------------------------------------- */
+
 .steps {
   list-style: none;
   counter-reset: step;
   padding: 0;
   margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--s-4);
 }
 
 .steps li {
   counter-increment: step;
-  display: grid;
-  grid-template-columns: 36px minmax(0, 1fr);
-  gap: var(--s-3);
-  padding: var(--s-3) 0;
-  border-top: 1px solid var(--hairline);
-  font-size: 15px;
+  padding: var(--s-5);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+  background: var(--sunken);
+  box-shadow: var(--highlight-top);
+  font-size: var(--t-base);
   line-height: 1.65;
   color: var(--muted);
+  transition: border-color var(--transition-fast), transform var(--transition-fast);
 }
 
-.steps li:last-child {
-  border-bottom: 1px solid var(--hairline);
+.steps li:hover {
+  border-color: var(--hairline-strong);
+  transform: translateY(-2px);
 }
 
 .steps li::before {
+  display: block;
   content: counter(step, decimal-leading-zero);
-  font-family: var(--font-mono);
+  font-family: var(--mono);
   font-size: var(--t-sm);
-  color: var(--faint);
-  padding-top: 2px;
+  font-weight: 700;
+  color: var(--fomo);
+  margin-bottom: var(--s-3);
 }
 
 .steps li strong {
+  display: block;
   color: var(--ink);
-  font-weight: 600;
+  font-weight: 700;
+  margin-bottom: var(--s-1);
+}
+
+/* -- Landing footer ------------------------------------------------------- */
+
+.site-footer {
+  border-top: 1px solid var(--hairline);
+  margin-top: var(--s-9);
+}
+
+.site-footer .inner {
+  max-width: var(--shell-max);
+  margin: 0 auto;
+  padding: var(--s-6) var(--s-5) var(--s-8);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--s-4);
+  flex-wrap: wrap;
+  color: var(--muted);
+  font-size: var(--t-sm);
+}
+
+.site-footer nav {
+  display: flex;
+  gap: var(--s-4);
+  flex-wrap: wrap;
+}
+
+.site-footer a {
+  color: var(--muted);
+  transition: color var(--transition-fast);
+}
+
+.site-footer a:hover {
+  color: var(--ink);
 }
 
 /* ==========================================================================
-   Responsive
+   11. Prose pages (auth, legal, onboarding)
    ========================================================================== */
 
-@media (max-width: 1040px) {
+.prose {
+  max-width: var(--prose-max);
+  margin: 0 auto;
+  padding: var(--s-8) var(--s-5) var(--s-10);
+}
+
+.prose-head {
+  margin-bottom: var(--s-7);
+  padding-bottom: var(--s-5);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.prose-head h1 {
+  margin: 0;
+  font-size: var(--t-2xl);
+  line-height: 1.1;
+  letter-spacing: var(--ls-tight);
+  font-weight: 700;
+}
+
+.prose-head p {
+  margin: var(--s-3) 0 0;
+  font-size: var(--t-md);
+  line-height: 1.7;
+  color: var(--muted);
+}
+
+.prose-section {
+  margin-bottom: var(--s-7);
+}
+
+.prose-section h3 {
+  font-size: var(--t-base);
+  font-weight: 700;
+  color: var(--ink);
+  margin: 0 0 var(--s-3);
+}
+
+.prose-section p {
+  font-size: 15px;
+  line-height: 1.75;
+  color: var(--muted);
+  margin: 0 0 var(--s-3);
+  max-width: 68ch;
+}
+
+.prose-section strong {
+  color: var(--ink);
+  font-weight: 650;
+}
+
+.prose-section em {
+  color: var(--ink);
+  font-style: italic;
+}
+
+.prose-section .row {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+}
+
+.prose-section.disclosure h3,
+.prose-section.disclosure p,
+.prose-section.disclosure strong {
+  color: var(--warn-ink);
+}
+
+/* Inline prose links only. Nav and buttons are excluded by the global reset. */
+.prose a:not(.button):not(.secondary):not(.brand),
+.section a:not(.button):not(.secondary):not(.brand):not(.section-action) {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: var(--hairline-strong);
+  transition: text-decoration-color var(--transition-fast);
+}
+
+.prose a:not(.button):not(.secondary):not(.brand):hover,
+.section a:not(.button):not(.secondary):not(.brand):not(.section-action):hover {
+  text-decoration-color: var(--fomo);
+}
+
+/* ==========================================================================
+   12. Responsive
+   ========================================================================== */
+
+@media (max-width: 1180px) {
   .grid {
     grid-template-columns: minmax(0, 1fr) 300px;
   }
 }
 
+/* The centered wordmark needs room for the links either side of it. Below
+   this, the brand moves left and the links take the middle. */
+@media (max-width: 1080px) {
+  .topnav {
+    grid-template-columns: auto 1fr auto;
+  }
+
+  .topnav-brand {
+    grid-column: 1;
+    justify-self: start;
+  }
+
+  .topnav-links {
+    grid-column: 2;
+    justify-content: center;
+  }
+}
+
 @media (max-width: 960px) {
-  .shell {
-    display: block;
+  .topnav-wrap {
+    padding: var(--s-3) var(--s-4) var(--s-2);
   }
 
+  .topnav {
+    height: 56px;
+  }
+
+  /*
+   * The links go, and the middle column goes with them. The brand stays in
+   * column 1 and the controls in column 3 — the pins above, and the reason
+   * they are pins: a `display: none` grid item is not a grid item, so without
+   * them the brand and the controls would slide one column left and the bar
+   * would render as a left-aligned clump with a hole punched in the right.
+   */
+  .topnav-links {
+    display: none;
+  }
+
+  /* The sidebar collapses to the floating bottom pill here. */
   .sidebar {
-    position: static;
-    height: auto;
-    border-right: 0;
-    border-bottom: 1px solid var(--hairline);
+    display: none;
   }
 
-  .nav {
-    grid-auto-flow: column;
-    overflow-x: auto;
-    gap: var(--s-1);
+  .content {
+    margin-left: 0;
   }
 
-  .nav a {
-    white-space: nowrap;
+  .main {
+    padding: var(--s-4) var(--s-4) 108px;
+  }
+
+  /* The top bar drops the wide search for the wordmark; search moves into the
+     pages themselves (Friends has its own search field). */
+  .app-topbar {
+    padding: 0 var(--s-4);
+  }
+
+  .app-search {
+    display: none;
+  }
+
+  .app-topbar-brand {
+    display: inline-flex;
+    align-items: center;
   }
 
   .grid {
     grid-template-columns: 1fr;
   }
 
-  .main {
-    padding: var(--s-4) var(--s-4) var(--s-6);
+  .stack.sticky {
+    position: static;
   }
 
-  .tabs {
-    width: 100%;
-    overflow-x: auto;
+  .data-head {
+    display: none;
+  }
+
+  .data-row {
+    grid-template-columns: 1fr 1fr;
+    gap: var(--s-2) var(--s-4);
+    padding: var(--s-4);
+  }
+
+  .data-row .cell:first-child {
+    grid-column: 1 / -1;
+  }
+
+  .topbar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--s-3);
+  }
+
+  .topbar p {
+    max-width: none;
   }
 
   .topbar h2 {
     font-size: var(--t-lg);
   }
 
-  .hero-body h2 {
+  .asset-price {
+    justify-items: start;
+  }
+
+  .asset-price .figure {
     font-size: var(--t-xl);
   }
 
-  .landing {
-    padding: var(--s-5) var(--s-4) var(--s-7);
+  /* Floating pill bottom nav, not a full-width bar — it reads as part of the
+     same chrome as the top pill. */
+  .bottom-nav {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
+    position: fixed;
+    bottom: var(--s-3);
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 100;
+    width: min(calc(100% - var(--s-6)), 460px);
+    padding: 5px;
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-pill);
+    background: var(--glass-solid);
+    backdrop-filter: var(--blur);
+    -webkit-backdrop-filter: var(--blur);
+    box-shadow: var(--shadow-xl), var(--highlight-top);
+  }
+
+  .bottom-nav a {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    min-height: 46px;
+    border-radius: var(--radius-pill);
+    font-size: 10px;
+    font-weight: 650;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--muted);
+    position: relative;
+    transition: color var(--transition-fast), background var(--transition-fast);
+  }
+
+  .bottom-nav a.active {
+    color: var(--primary);
+    background: var(--raised);
+  }
+
+  .bottom-nav .badge {
+    position: absolute;
+    top: 4px;
+    right: 50%;
+    margin-right: -18px;
+  }
+
+  /* Keep the soft forms on mobile — they are the whole atmosphere — but calm
+     them so they never fight the wordmark on a small screen. */
+  .scene-rings {
+    opacity: 0.55;
+    filter: blur(48px);
+    animation: none;
+  }
+
+  .hero {
+    grid-template-columns: 1fr;
+    min-height: auto;
+    gap: var(--s-7);
+    padding: var(--s-8) var(--s-4) var(--s-8);
+  }
+
+  /* The product card drops below the copy and straightens out. */
+  .hero-product {
+    transform: none;
+    order: 2;
+  }
+
+  .section {
+    padding: var(--s-7) var(--s-4);
+  }
+
+  .prose {
+    padding: var(--s-6) var(--s-4) var(--s-9);
+  }
+
+  .prose-section p {
+    max-width: none;
   }
 }
 
-/* Honour a reduced-motion preference. The only transition in the file is the
-   tab hover, but this is the rule that keeps the next one honest. */
+@media (max-width: 640px) {
+  .tile-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* The three feature badges stack under the hero on a phone. */
+  .hero-features {
+    grid-template-columns: 1fr;
+    gap: var(--s-3);
+  }
+
+  .search-bar {
+    max-width: none;
+  }
+
+  .prose-head h1 {
+    font-size: var(--t-xl);
+  }
+
+  /*
+   * The four stats wrap 3 + 1 in a flex row at this width — `101 TRADES
+   * INDEXED` is half the row on its own — which leaves `DEVNET SETTLEMENT`
+   * orphaned on a second line under nothing. Two columns rather than three
+   * because the widest pair still fits: at 390px the columns are ~163px and
+   * the longest stat measures 114px.
+   */
+  .hero-stats {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--s-5) var(--s-4);
+  }
+
+  /*
+   * The nav pill: brand left, network right, action button in between. The
+   * button label is `white-space: nowrap` (see `.button`), because a button
+   * that wraps its own label is a button with a two-line label — which is what
+   * `.sm` was doing here, at 39px tall against a 32px sibling. Reclaiming the
+   * room it needs instead: the bar's gap and the pill's side padding.
+   */
+  .topnav {
+    gap: var(--s-2);
+  }
+
+  .net-pill {
+    padding: 0 var(--s-2);
+  }
+
+  /*
+   * Mark-only lockup. Even with the tighter gaps above, the brand plus the
+   * longest action label ("Back to the feed", on /terms) overflows the bar's
+   * content box by 17px at 390px. The wordmark is the part that gives way: the
+   * mark alone is still the brand, and the page behind the bar spells FOBS in
+   * 84px type. The link carries `aria-label="FOBS"` so hiding this does not
+   * rename it.
+   */
+  .topnav .wordmark {
+    display: none;
+  }
+}
+
+@media (max-width: 520px) {
+  .sheet-backdrop {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .sheet {
+    max-width: none;
+    max-height: 88vh;
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  }
+
+  .card,
+  .panel {
+    padding: var(--s-3);
+    border-radius: var(--radius);
+  }
+
+  .stat-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .asset-row,
+  .holding-row {
+    padding: var(--s-2) var(--s-3);
+    flex-wrap: wrap;
+  }
+
+  .trade-title,
+  .trade-amount {
+    font-size: var(--t-md);
+  }
+
+  .trade-hero {
+    flex-wrap: wrap;
+  }
+
+  .card-footer {
+    gap: var(--s-3);
+  }
+
+  .figures {
+    font-size: var(--t-xs);
+  }
+
+  .row {
+    flex-wrap: wrap;
+  }
+
+  .topbar h2 {
+    font-size: var(--t-lg);
+  }
+
+  .section-title {
+    font-size: var(--t-lg);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -1099,3 +2782,63 @@ dd .chip,
     scroll-behavior: auto !important;
   }
 }
+
+/* ==========================================================================
+   13. Keyframes
+   ========================================================================== */
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes menu-in {
+  from { opacity: 0; transform: translateY(-6px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes menu-up {
+  from { opacity: 0; transform: translateY(6px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes sheet-in {
+  from { transform: translateY(24px) scale(0.97); opacity: 0; }
+  to { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+@keyframes live-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+
+/* The soft forms drift slowly, so the atmosphere is alive without ever pulling
+   the eye off the wordmark. Honoured by the reduced-motion rule below. */
+@keyframes drift {
+  from { transform: translate3d(0, 0, 0) scale(1); }
+  to { transform: translate3d(2%, -1.5%, 0) scale(1.06); }
+}
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* The hero settles in rather than appearing: eyebrow, headline, body, actions,
+   stats, then the product card. Slow enough to read as one motion, staggered
+   enough that it is not a single block. */
+.hero-eyebrow,
+.hero-word,
+.hero-body,
+.hero-actions,
+.hero-stats,
+.hero-product {
+  animation: rise 0.75s var(--ease-out) backwards;
+}
+
+.hero-eyebrow  { animation-delay: 0.05s; }
+.hero-word     { animation-delay: 0.15s; }
+.hero-body     { animation-delay: 0.28s; }
+.hero-actions  { animation-delay: 0.40s; }
+.hero-stats    { animation-delay: 0.52s; }
+.hero-product  { animation-delay: 0.34s; }

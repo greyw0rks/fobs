@@ -3,7 +3,7 @@
 Living status of the FOBS build. Sections are checked off as they are actually
 verified — not when the code is written. Anything unverified is marked as such.
 
-**Last updated:** 2026-09-18
+**Last updated:** 2026-09-20
 
 ---
 
@@ -38,6 +38,28 @@ an **asset chart** plotted only from indexed trade prices, holder counts and
 disclosure on it, and **hardening**: rate limits on every state-changing route,
 sign-out as a POST, and a session requirement on the `/dev` harness.
 
+The most recent pass replaced the last three things that were still fake or
+absent, and they were the three the social loop depended on:
+
+- **Identity is real.** `currentUserOrDevFallback()` is gone, so a signed-out
+  visitor is signed out instead of silently becoming the seeded user `grey`.
+  Sign-in is now wallet (SIWS — a nonce challenge verified with ed25519, no
+  credentials required), X, and Google, each independently enabled by its own
+  environment variables and each stating honestly when it is not configured.
+  A `Wallet` is now an entity rather than a column, which is what makes linking a
+  second wallet possible at all — and the indexer needs *every* address a user
+  trades from, not just one.
+- **Prices are real.** See "Price layer" below.
+- **Activity is real.** Ten seeded accounts trade on a loop, and every new
+  account starts out following all ten (and followed back), so the feed and the
+  notification bell are live on a first visit rather than empty.
+
+The rule that made the signing decision tractable: **a user who brought a wallet
+signs their own trades.** The browser builds and signs, and `POST
+/api/trades/submit` verifies the receipt's onchain `owner` against the session
+before indexing — that check *is* the authorisation. Seeded accounts keep
+server-side signing so the activity loop can run unattended.
+
 ⚠️ **Wallet onboarding holds user keys on the server.** That is a devnet-only
 decision, documented at the top of `lib/server/custody.ts`, and it is the first
 thing to replace if this ever stops being devnet. The user is now told this on
@@ -48,7 +70,7 @@ pnpm dev              # web app
 pnpm build:program    # build the .so and refresh the IDL + TS types
 pnpm test:onchain     # local validator, deploy, verify bytecode, run the suite
 pnpm devnet:bootstrap # devnet: mint, protocol, five assets, prices, reserves
-pnpm devnet:users     # devnet: create and fund the four test users
+pnpm devnet:users     # devnet: create and fund the ten trading accounts
 pnpm seed:db          # seed assets/users/follows into the local database
 pnpm db:verify:dev    # exercise that database through the app's own read models
 pnpm smoke:loop       # the Alice → Bob FOMO loop, against devnet
@@ -143,8 +165,17 @@ $HOME/.local/share/solana/install/active_release/bin:$PATH"
 - [x] Pyth feeds verified by measurement, not assumption —
       `docs/PYTH_VERIFICATION.md`. **0/5 equity feeds are usable on devnet**
       (NVDA 23d stale, MSFT 78d); **5/5 are fresh on mainnet** (8–16s).
-      Decision follows the measurement: mock on devnet, real Pyth ids retained
-      for mainnet.
+      Decision follows the measurement: no Pyth on devnet, real Pyth ids
+      retained on each asset for mainnet.
+- [x] **Prices are real anyway.** `lib/server/push-prices.ts` fetches live quotes
+      from Yahoo Finance and writes them into the oracle every ~30s, in one
+      bundled transaction for all five assets, skipping any that have not moved.
+      The program's oracle account is admin-gated and exempt from the 90s
+      staleness check *by construction*, so a real number goes in without a
+      program change. The `MockOracle` account name and the `set_mock_price`
+      instruction kept their names — renaming them would mean a redeploy and
+      buys nothing — but the *data* is live, and no surface calls it mock any
+      more. `Asset.priceUpdatedAt` carries the age, and the UI shows it.
 
 ### Data layer
 
@@ -179,7 +210,8 @@ $HOME/.local/share/solana/install/active_release/bin:$PATH"
 
 - [x] Five assets, not seven: `sNVDA sAAPL sMSFT sTSLA sAMZN`
 - [x] Four core instructions only: `initialize`, `register_asset`, `fund_vault`,
-      `trade` (`set_mock_price` exists only because devnet has no live Pyth feed)
+      `trade` (`set_mock_price` is oracle administration — devnet has no live
+      Pyth feed, so the operator pushes the real quote instead)
 - [x] Portfolio-FOMO program and the `PortfolioFollow` table removed — cut, not
       deferred-and-half-built
 
@@ -196,10 +228,10 @@ Live and verified against the chain, not against the script that wrote it.
 | Admin / upgrade authority | `BdDxDMDj2iFQ8CDt3n2rcHcgmrdbZ7f15zQSm5Ao1M5R` |
 | Spread | 50 bps |
 
-Five assets registered (`sNVDA sAAPL sMSFT sTSLA sAMZN`), each with a mock price
-and a 100,000 test-USDC reserve. `pnpm devnet:verify` re-derives every PDA from
-the IDL and reads the chain, so "the bootstrap says it worked" and "the chain
-agrees" stay distinguishable.
+Five assets registered (`sNVDA sAAPL sMSFT sTSLA sAMZN`), each with a real market
+price pushed onchain every ~30s and a 100,000 test-USDC reserve.
+`pnpm devnet:verify` re-derives every PDA from the IDL and reads the chain, so
+"the bootstrap says it worked" and "the chain agrees" stay distinguishable.
 
 `pnpm devnet:bootstrap` and `pnpm devnet:verify` are both idempotent; addresses
 are cached in `.devnet/` (gitignored — it holds real keypairs).
@@ -464,14 +496,19 @@ chain rather than against the script that wrote it.
 
 The revised P0 is complete and verified (see above). What is not built:
 
-- **Real X credentials.** The OAuth2 + PKCE flow is implemented end to end, but
-  `X_CLIENT_ID` / `X_CALLBACK_URL` are not set, so `xConfigured()` is false and
-  the sign-in page offers the seeded accounts instead. Two environment variables
-  are the whole gap; the page says so rather than pretending.
-- **Pyth is configured but not live on devnet.** Assets carry real `PYTH_FEED_IDS`
-  and the asset page names the mainnet feed, but no Pyth US-equity feed is
-  published on devnet, so prices come from the program's `MockOracle` and every
-  surface says so. This is a fact about devnet, not a missing integration.
+- **Real X and Google credentials.** Both OAuth flows are implemented end to end
+  (OAuth2 + PKCE, intent carried in a cookie of its own rather than in `state`),
+  but the environment variables are not set, so `xConfigured()` and
+  `googleConfigured()` are false and the sign-in page states that plainly instead
+  of hiding the buttons. Wallet sign-in needs no credentials at all and always
+  works. `X_CALLBACK_URL` additionally has to be **publicly reachable** — X's
+  servers make that redirect, not the browser.
+- **Pyth is configured but not live on devnet**, and this is now a decision
+  rather than a gap: assets carry real `PYTH_FEED_IDS` for mainnet, and on devnet
+  the operator pushes a real Yahoo quote into the oracle instead (see "Price
+  layer"). The asset page names the source and the age of the number. No Pyth
+  US-equity feed is published to devnet; that is a fact about devnet, not a
+  missing integration.
 
 ### Rehearsal
 
@@ -600,6 +637,36 @@ Things that cost time and will cost it again. Do not rediscover these.
     `@/lib/prisma` dies with `Environment variable not found: DATABASE_URL`.
     Scripts pass it explicitly: `tsx --env-file=.env.local …` (see
     `smoke:loop` in `apps/web/package.json`).
+
+15. **`instrumentation.ts` is compiled for the Edge runtime as well as Node, and
+    the failure takes the whole server with it.** The background loops used to
+    start from there, reaching `market-activity.ts` → `execute-trade.ts` →
+    `onboarding.ts` → `custody.ts`, which imports `node:crypto` for AES-GCM.
+    Edge cannot resolve `node:crypto`, so the *server compilation* fails and
+    **every page returns 500** in `next dev`, with an `UnhandledSchemeError`
+    whose import trace names a module no page imports — which points at the
+    wheel that isn't squeaking. Three things make it hard to see:
+
+    - **`next build` passes cleanly.** Only something that actually renders
+      surfaces it, so a green build is not evidence here.
+    - **A dynamic `import()` does not help.** Webpack still emits the chunk for
+      whichever runtime it is building, so the module is compiled even though
+      nothing would ever execute it under Edge.
+    - **A `NEXT_RUNTIME === "nodejs"` guard does not help either**, which is the
+      pattern the Next docs suggest. It was tried; the pages still 500'd.
+
+    The loops are therefore not in the web server at all. They sign devnet
+    transactions with the operator's keys, so `pnpm loops` runs them as their own
+    processes. That is the fix and also the better architecture — a process that
+    restarts on every save is a bad home for a wallet.
+
+16. **A relative SQLite path resolves against the schema directory, not the
+    cwd.** `DATABASE_URL=file:./dev.db` means `apps/web/prisma/dev.db`, so a
+    *copy* of the repo has its own separate database. Running the dev server from
+    a copy while the scripts write to the original leaves both halves looking
+    healthy and showing different users, trades and follows — and the symptom
+    reads as "the seeder did nothing" rather than "you have two databases". Check
+    which checkout the server is actually running from before believing a count.
 
 15. **`pnpm build` and `pnpm dev` share `.next`, and the build wins.** Running a
     production build while the dev server is up leaves the dev server serving a

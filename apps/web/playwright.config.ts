@@ -33,9 +33,22 @@ export default defineConfig({
 
   projects: [
     { name: "desktop", use: { ...devices["Desktop Chrome"] } },
-    // The narrow viewport is not a second test run so much as the one that
-    // catches overflow, so it only runs the layout specs.
-    { name: "mobile", use: { ...devices["iPhone 13"] }, testMatch: /layout\.spec\.ts/ }
+    /*
+     * The narrow viewport is not a second test run so much as the one that
+     * catches overflow, so it only runs the layout specs.
+     *
+     * `browserName` is not redundant. `devices["iPhone 13"]` carries
+     * `defaultBrowserType: "webkit"`, so spreading it picked WebKit and the
+     * whole project died at launch on a machine that only has Chromium
+     * installed — forty-four red tests that were all the same missing
+     * executable. The phone metrics (viewport, DPR, touch) are what this
+     * project wants; the engine is not.
+     */
+    {
+      name: "mobile",
+      use: { ...devices["iPhone 13"], browserName: "chromium" },
+      testMatch: /layout\.spec\.ts/
+    }
   ],
 
   webServer: {

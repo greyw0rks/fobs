@@ -64,8 +64,9 @@ function audit(): Finding[] {
       }
       node = node.parentElement;
     }
-    // Start from the page default and composite each layer over it.
-    let out: [number, number, number, number] = [11, 13, 14, 1];
+    // Start from the page default — `--paper`, `#08070c` — and composite each
+    // layer over it.
+    let out: [number, number, number, number] = [8, 7, 12, 1];
     for (const layer of stack.reverse()) {
       const a = layer[3];
       out = [
@@ -98,6 +99,18 @@ function audit(): Finding[] {
 
     const color = parse(s.color);
     if (!color) continue;
+
+    /*
+     * Skip text that paints no colour of its own.
+     *
+     * The hero wordmark and the nav wordmark are `background-clip: text` with a
+     * transparent fill, so their computed `color` is `rgba(0, 0, 0, 0)` and the
+     * visible glyphs come from a gradient this walker cannot resolve. Measuring
+     * them here reports a black-on-black failure that does not exist. Their
+     * gradient stops are chosen against the ratios by hand and checked in
+     * docs/DESIGN.md.
+     */
+    if (color[3] === 0) continue;
 
     const fontSize = parseFloat(s.fontSize);
     const weight = parseInt(s.fontWeight, 10) || 400;

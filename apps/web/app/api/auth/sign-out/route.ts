@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { SESSION_COOKIE, destroySession } from "@/lib/server/session";
+import { publicOrigin } from "@/lib/server/base-url";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +24,7 @@ export async function POST(request: Request) {
   const id = store.get(SESSION_COOKIE)?.value;
   if (id) await destroySession(id);
 
-  const response = NextResponse.redirect(new URL("/", new URL(request.url).origin), 303);
+  const response = NextResponse.redirect(new URL("/", publicOrigin(request)), 303);
   response.cookies.delete(SESSION_COOKIE);
   return response;
 }

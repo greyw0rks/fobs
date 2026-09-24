@@ -20,7 +20,6 @@ export type SessionUser = {
   displayName: string;
   avatar: string | null;
   walletAddress: string | null;
-  isTestUser: boolean;
   onboarded: boolean;
 };
 
@@ -73,7 +72,6 @@ export async function currentUser(): Promise<SessionUser | null> {
           displayName: true,
           avatar: true,
           walletAddress: true,
-          isTestUser: true,
           onboardedAt: true
         }
       }
@@ -95,35 +93,6 @@ export async function currentUser(): Promise<SessionUser | null> {
     displayName: user.displayName,
     avatar: user.avatar,
     walletAddress: user.walletAddress,
-    isTestUser: user.isTestUser,
     onboarded: user.onboardedAt !== null
   };
-}
-
-/**
- * The signed-in user, or the `grey` test account.
- *
- * This exists so the feed and the /dev harness are usable before the sign-in
- * flow is wired up. It is deliberately one named fallback rather than a
- * "pretend to be anyone" affordance, and it goes away once X sign-in lands.
- */
-export async function currentUserOrDevFallback(): Promise<SessionUser | null> {
-  const user = await currentUser();
-  if (user) return user;
-  if (process.env.NODE_ENV === "production") return null;
-
-  const fallback = await prisma.user.findUnique({
-    where: { username: "grey" },
-    select: {
-      id: true,
-      username: true,
-      displayName: true,
-      avatar: true,
-      walletAddress: true,
-      isTestUser: true,
-      onboardedAt: true
-    }
-  });
-  if (!fallback) return null;
-  return { ...fallback, onboarded: fallback.onboardedAt !== null };
 }

@@ -1,4 +1,4 @@
-import { currentUserOrDevFallback } from "@/lib/server/session";
+import { currentUser } from "@/lib/server/session";
 import { recentEvents, subscribe, type FobsEvent } from "@/lib/server/events";
 
 /**
@@ -19,7 +19,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export async function GET(request: Request) {
-  const viewer = await currentUserOrDevFallback();
+  const viewer = await currentUser();
   const viewerId = viewer?.id ?? null;
 
   const encoder = new TextEncoder();

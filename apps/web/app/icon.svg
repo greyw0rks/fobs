@@ -1,0 +1,7 @@
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Fobs tab mark: black action square, canvas-white "f", data-blue crossbar. -->
+  <rect width="32" height="32" rx="7.5" fill="#080909"/>
+  <path d="M20 9.4C16.4 8.3 14.3 9.5 14.3 13V24"
+        stroke="#f4f3ef" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M9.8 15H20.4" stroke="#3175C6" stroke-width="4.1" stroke-linecap="round"/>
+</svg>

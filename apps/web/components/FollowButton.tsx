@@ -24,7 +24,7 @@ export function FollowButton({
 
   if (!signedIn) {
     return (
-      <a className="secondary" href="/sign-in">
+      <a className="fobs-button-secondary inline-flex" href="/sign-in">
         Sign in to follow
       </a>
     );
@@ -32,7 +32,7 @@ export function FollowButton({
 
   return (
     <button
-      className={isFollowing ? "secondary" : "button"}
+      className={isFollowing ? "fobs-button-secondary" : "fobs-button-primary"}
       disabled={busy}
       onClick={async () => {
         const next = !isFollowing;

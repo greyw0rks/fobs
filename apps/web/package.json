@@ -3,28 +3,41 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "prisma generate && node scripts/ensure-profile-columns.mjs && next build",
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "prisma": "prisma",
-    "smoke:loop": "tsx --env-file=.env.local scripts/smoke-loop.ts",
-    "smoke:onboard": "tsx --env-file=.env.local scripts/smoke-onboard.ts",
-    "verify:db": "tsx --env-file=.env.local scripts/verify-db.ts",
+    "verify:prestocks": "tsx scripts/verify-prestocks.ts",
+    "check:prestocks": "tsx scripts/check-prestocks.ts",
+    "check:swap": "tsx scripts/check-swap.ts",
+    "seed:markets": "tsx scripts/seed-markets.ts",
+    "premium": "tsx scripts/premium.ts",
+    "pyth:guard": "tsx scripts/pyth-guard.ts",
+    "check:pyth": "tsx scripts/check-pyth.ts",
+    "positions": "tsx scripts/positions.ts",
+    "calibrate:venues": "tsx scripts/calibrate-venues.ts",
     "rehearse": "tsx --env-file=.env.local scripts/rehearse.ts",
     "e2e": "playwright test",
-    "e2e:report": "playwright show-report"
+    "e2e:report": "playwright show-report",
+    "backfill": "tsx --env-file=.env.local scripts/backfill.ts"
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.30.1",
     "@prisma/client": "^6.15.0",
     "@solana/spl-token": "^0.4.15",
+    "@solana/wallet-adapter-base": "^0.9.28",
     "@solana/wallet-adapter-react": "^0.15.39",
+    "@solana/wallet-standard-wallet-adapter-react": "^1.1.7",
     "@solana/web3.js": "^1.98.0",
+    "lucide-react": "^1.47.0",
+    "motion": "^13.4.1",
     "next": "^15.5.0",
     "prisma": "^6.15.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
+    "recharts": "^3.10.1",
+    "tweetnacl": "^1.0.3",
     "zod": "^4.1.0"
   },
   "devDependencies": {
@@ -32,8 +45,11 @@
     "@types/node": "^24.3.0",
     "@types/react": "^19.1.0",
     "@types/react-dom": "^19.1.0",
+    "autoprefixer": "^10.6.1",
     "eslint": "^9.34.0",
     "eslint-config-next": "^15.5.0",
+    "postcss": "^8.5.28",
+    "tailwindcss": "^3.4.19",
     "typescript": "^5.8.0"
   }
 }

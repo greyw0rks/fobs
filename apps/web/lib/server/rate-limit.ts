@@ -1,17 +1,17 @@
 /**
  * A token bucket, in process.
  *
- * This exists because every state-changing route in this app signs a devnet
+ * This exists because every state-changing route in this app forwards a mainnet
  * transaction or writes a follow row, and none of them were bounded. A loop
- * against `POST /api/trades` is a loop of real devnet transactions from the
- * operator's SOL; a loop against `POST /api/auth/dev` is a loop of sessions.
- * Neither is a hypothetical attack on a demo — a stuck client retry does it.
+ * against `POST /api/trades/submit` is a loop of real mainnet sends; a loop
+ * against the sign-in routes is a loop of sessions. Neither is a hypothetical
+ * attack — a stuck client retry does it.
  *
  * Deliberately not a distributed limiter. Like the event bus, state is
  * per-process, so N instances allow N× the rate. That is a real limitation and
- * the honest one to ship at this size: the alternative is a Redis dependency to
- * protect a devnet demo. The interface is the part that would survive; swapping
- * the store behind `take()` is the fix, and it is contained to this file.
+ * the honest one to ship at this size: the alternative is a Redis dependency.
+ * The interface is the part that would survive; swapping the store behind
+ * `take()` is the fix, and it is contained to this file.
  *
  * The `globalThis` pattern is the same as `lib/server/events.ts` and for the
  * same reason: Next re-evaluates modules on hot reload, and a limiter that

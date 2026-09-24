@@ -1,0 +1,11 @@
+node_modules
+**/node_modules
+.next
+**/.next
+target
+.git
+.anchor
+.devnet
+apps/web/dev.db
+apps/web/prisma/dev.db
+**/*.log
