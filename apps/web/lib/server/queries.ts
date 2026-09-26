@@ -405,8 +405,14 @@ export async function getPortfolio(userId: string): Promise<PortfolioView> {
   // table (the chain keeps the account) but it would be noise on this page.
   const open = priced.filter((row) => row.quantity > 0);
   const valued = open.filter((row) => row.value !== null);
-  const totalValue = valued.length === 0 ? null : valued.reduce((sum, r) => sum + r.value!, 0);
-  const totalCost = valued.length === 0 ? null : valued.reduce((sum, r) => sum + r.cost, 0);
+  // No open positions is a real answer, not a missing one: the wallet holds
+  // nothing, so value and cost are genuinely $0. `null` stays reserved for the
+  // case where positions ARE held but none could be priced yet — there, a $0
+  // would be a false number, which is the one thing this app won't print.
+  const totalValue =
+    open.length === 0 ? 0 : valued.length === 0 ? null : valued.reduce((sum, r) => sum + r.value!, 0);
+  const totalCost =
+    open.length === 0 ? 0 : valued.length === 0 ? null : valued.reduce((sum, r) => sum + r.cost, 0);
   const unrealizedPnl =
     totalValue === null || totalCost === null ? null : totalValue - totalCost;
 
