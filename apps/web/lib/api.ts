@@ -81,6 +81,13 @@ export const api = {
   markNotificationsRead: () =>
     json<{ marked: number }>("/api/notifications", { method: "POST" }),
 
+  /**
+   * Record that the first-run walkthrough has been dismissed, so it never shows
+   * again. Idempotent on the server — safe to call from finish and from skip.
+   */
+  completeOnboarding: () =>
+    json<{ onboarded: boolean }>("/api/me/onboarded", { method: "POST" }),
+
   follow: (username: string, follow: boolean) =>
     json<{ following: boolean }>(`/api/users/${encodeURIComponent(username)}/follow`, {
       method: follow ? "POST" : "DELETE"

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { LinkWalletPanel } from "@/components/LinkWalletPanel";
 import { UsernameForm } from "@/components/UsernameForm";
+import { ReplayTourButton } from "@/components/fobs/replay-tour-button";
 import { Reveal, Stagger, StaggerItem } from "@/components/fobs/motion";
 import { prisma } from "@/lib/prisma";
 import { currentUser } from "@/lib/server/session";
@@ -179,6 +180,17 @@ export default async function AccountPage({
               Linking attaches an identity to <em>this</em> account rather than switching to
               it, so your trades, follows and wallet stay where they are.
             </p>
+          </div>
+
+          <div className="fobs-surface p-5">
+            <h3 className="text-sm font-semibold">Getting around</h3>
+            <p className="mt-1 text-xs text-[#777872]">
+              A quick tour of what fobs is and how each part works — the same one
+              you saw when you joined.
+            </p>
+            <div className="mt-3">
+              <ReplayTourButton />
+            </div>
           </div>
 
           <form action="/api/auth/sign-out" method="post">

@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { FobsShell } from "@/components/fobs/shell";
+import { Walkthrough } from "@/components/fobs/walkthrough";
 import { unreadNotificationCount } from "@/lib/server/queries";
 import { currentUser } from "@/lib/server/session";
 
@@ -30,6 +31,9 @@ export default async function AppLayout({
   return (
     <FobsShell user={user} unread={unread}>
       {children}
+      {/* Always mounted for a signed-in viewer so "Replay walkthrough" works
+          from any route; it opens itself on first run and listens for replays. */}
+      {user ? <Walkthrough firstRun={!user.onboarded} /> : null}
     </FobsShell>
   );
 }
