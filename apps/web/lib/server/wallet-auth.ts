@@ -55,9 +55,19 @@ export type NoncePurpose = "sign-in" | "link";
  * the only thing standing between a user and approving this on a phishing site.
  * The human-readable statement is not decoration — it is the part a person
  * actually reads before pressing approve.
+ *
+ * SIWS is not just a look, it is a grammar Phantom parses. Any `signMessage`
+ * payload that resembles a Sign-In-With standard is parsed and field-checked,
+ * and Phantom — most visibly on mobile — refuses to render one it cannot parse
+ * with "this app's signature request cannot be shown due to invalid formatting."
+ * The rule that bites here: the first line names the *authority* (host and
+ * optional port, no scheme), while the scheme lives in the `URI` field. So the
+ * two are deliberately different — bare host on line one, full origin in `URI`.
+ * Passing the whole origin (with `https://`) on line one is what breaks mobile.
  */
 function buildMessage(input: {
-  domain: string;
+  /** Full request origin, e.g. `https://fobs.example` — scheme + host[:port]. */
+  origin: string;
   address: string;
   nonce: string;
   issuedAt: Date;
@@ -68,13 +78,15 @@ function buildMessage(input: {
       ? "Link this wallet to your existing FOBS account."
       : "Sign in to FOBS. This signature proves you control this wallet. It does not authorise any transaction.";
 
+  const authority = new URL(input.origin).host;
+
   return [
-    `${input.domain} wants you to sign in with your Solana account:`,
+    `${authority} wants you to sign in with your Solana account:`,
     input.address,
     "",
     statement,
     "",
-    `URI: ${input.domain}`,
+    `URI: ${input.origin}`,
     "Version: 1",
     `Chain ID: solana:mainnet`,
     `Nonce: ${input.nonce}`,
@@ -102,7 +114,7 @@ export async function issueChallenge(input: {
   const expiresAt = new Date(issuedAt.getTime() + NONCE_TTL_MS);
 
   const message = buildMessage({
-    domain: input.domain,
+    origin: input.domain,
     address,
     nonce,
     issuedAt,
