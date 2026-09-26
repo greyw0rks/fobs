@@ -119,7 +119,7 @@ export default async function PortfolioPage() {
               {balances
                 ? balances.usdcAccountExists
                   ? money(balances.usdc)
-                  : "—"
+                  : "$0"
                 : "—"}
             </p>
             <p className="mt-1 text-[10px] text-[#9b9c95]">

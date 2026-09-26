@@ -158,7 +158,7 @@ export default async function FeedPage({
                 {summary.balances
                   ? summary.balances.usdcAccountExists
                     ? money(summary.balances.usdc)
-                    : "No USDC"
+                    : "$0"
                   : "—"}
               </p>
               <p className="mt-1 text-[10px] text-[#9b9c95]">USDC in your wallet</p>
