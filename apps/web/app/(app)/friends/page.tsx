@@ -4,7 +4,7 @@ import { FollowButton } from "@/components/FollowButton";
 import { Reveal, Stagger, StaggerItem } from "@/components/fobs/motion";
 import { listPeople } from "@/lib/server/queries";
 import { currentUser } from "@/lib/server/session";
-import { initials } from "@/lib/format";
+import { avatarSrc, initials } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -155,9 +155,14 @@ function PersonRow({ person, viewer }: { person: Person; viewer: boolean }) {
     <div className="flex flex-wrap items-center gap-4 px-5 py-4">
       <Link
         href={`/profile/${person.username}` as Route}
-        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#e9e5dc] text-[11px] font-semibold"
+        className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#e9e5dc] text-[11px] font-semibold"
       >
-        {initials(person.displayName)}
+        {avatarSrc(person.avatar) ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={avatarSrc(person.avatar)!} alt="" className="h-full w-full object-cover" />
+        ) : (
+          initials(person.displayName)
+        )}
       </Link>
 
       <div className="min-w-0 flex-1">

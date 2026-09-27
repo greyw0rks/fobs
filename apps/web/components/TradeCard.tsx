@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import type { AssetSummary, FeedTrade, WalletBalances } from "@/lib/types";
-import { ago, explorerUrl, initials, money, price, qty, shortSignature, synthetic } from "@/lib/format";
+import { ago, avatarSrc, explorerUrl, initials, money, price, qty, shortSignature, synthetic } from "@/lib/format";
 import { ApiError, api } from "@/lib/api";
 import { signAndSubmitTrade } from "@/lib/wallet-trade";
 import { useWallet } from "@solana/wallet-adapter-react";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 /**
@@ -26,9 +27,15 @@ export function Avatar({
   size?: "md" | "lg";
 }) {
   const hue = name ? name.charCodeAt(0) % 5 : 0;
+  const src = avatarSrc(avatar);
   return (
     <span className={`avatar${size === "lg" ? " lg" : ""}`} data-hue={hue}>
-      {avatar ?? initials(name)}
+      {src ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={src} alt="" />
+      ) : (
+        avatar ?? initials(name)
+      )}
     </span>
   );
 }
@@ -227,6 +234,7 @@ export function TradePanel({
   const [wallet, setWallet] = useState<WalletBalances | null>(balances ?? null);
 
   const adapter = useWallet();
+  const router = useRouter();
 
   /**
    * Who signs the transaction.
@@ -427,6 +435,11 @@ export function TradePanel({
               .balances()
               .then((fresh) => setWallet(fresh.balances))
               .catch(() => {});
+            // The panel owns its own USDC figure above, but the position it was
+            // given, the portfolio, and every holdings figure on this page were
+            // server-rendered before the swap and are now stale. Re-run the
+            // server components so those sync to the trade that just landed.
+            router.refresh();
           } catch (caught) {
             setError(caught instanceof Error ? caught.message : "Trade failed");
           } finally {

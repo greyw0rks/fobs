@@ -9,7 +9,7 @@ import { PortfolioChart } from "@/components/fobs/portfolio-chart";
 import { Reveal, Stagger, StaggerItem } from "@/components/fobs/motion";
 import { getPortfolio, getProfile } from "@/lib/server/queries";
 import { currentUser } from "@/lib/server/session";
-import { ago, initials, money, qty } from "@/lib/format";
+import { ago, avatarSrc, initials, money, qty } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -59,8 +59,13 @@ export default async function ProfilePage({
 
         <div className="px-6 pb-6">
           <div className="-mt-10 flex items-end justify-between gap-4">
-            <div className="flex h-20 w-20 items-center justify-center rounded-full border-4 border-white bg-[#ded8cd] text-lg font-semibold">
-              {initials(profile.user.displayName)}
+            <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border-4 border-white bg-[#ded8cd] text-lg font-semibold">
+              {avatarSrc(profile.user.avatar) ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={avatarSrc(profile.user.avatar)!} alt="" className="h-full w-full object-cover" />
+              ) : (
+                initials(profile.user.displayName)
+              )}
             </div>
 
             <div className="flex items-center gap-2">

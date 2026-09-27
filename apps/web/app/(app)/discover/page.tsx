@@ -6,7 +6,7 @@ import { Reveal, Stagger, StaggerItem } from "@/components/fobs/motion";
 import { listAssets, listPeople } from "@/lib/server/queries";
 import { changesForSymbols } from "@/lib/server/price-history";
 import { currentUser } from "@/lib/server/session";
-import { initials } from "@/lib/format";
+import { avatarSrc, initials } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -90,8 +90,13 @@ export default async function DiscoverPage() {
                   href={`/profile/${person.username}` as Route}
                   className="flex items-center gap-3"
                 >
-                  <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#e9e5dc] text-[11px] font-semibold">
-                    {initials(person.displayName)}
+                  <span className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-[#e9e5dc] text-[11px] font-semibold">
+                    {avatarSrc(person.avatar) ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={avatarSrc(person.avatar)!} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      initials(person.displayName)
+                    )}
                   </span>
                   <span className="min-w-0">
                     <span className="block truncate text-sm font-medium">

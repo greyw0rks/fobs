@@ -7,7 +7,7 @@
 import Link from "next/link";
 import type { Route } from "next";
 import type { PersonView } from "@/lib/types";
-import { initials } from "@/lib/format";
+import { avatarSrc, initials } from "@/lib/format";
 
 export function FriendsCard({ people }: { people: PersonView[] }) {
   return (
@@ -31,8 +31,13 @@ export function FriendsCard({ people }: { people: PersonView[] }) {
               className="flex items-center justify-between"
             >
               <div className="flex items-center gap-3">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#e9e5dc] text-[10px] font-semibold">
-                  {initials(person.displayName)}
+                <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-[#e9e5dc] text-[10px] font-semibold">
+                  {avatarSrc(person.avatar) ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={avatarSrc(person.avatar)!} alt="" className="h-full w-full object-cover" />
+                  ) : (
+                    initials(person.displayName)
+                  )}
                 </div>
 
                 <div>

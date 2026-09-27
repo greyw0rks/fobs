@@ -53,6 +53,19 @@ export function initials(name: string): string {
 }
 
 /**
+ * A usable <img> src from a stored avatar, or null.
+ *
+ * `User.avatar` holds whatever a provider gave us: an X or Google
+ * `profile_image_url` (an https URL) for accounts that signed in with one, and
+ * null otherwise. It has historically also held a literal emoji for
+ * hand-made accounts. Only a real URL can be rendered as a picture, so this
+ * returns null for anything else and callers fall back to `initials`.
+ */
+export function avatarSrc(avatar: string | null | undefined): string | null {
+  return avatar && /^https?:\/\//i.test(avatar) ? avatar : null;
+}
+
+/**
  * The disclosure, in one place.
  *
  * These tokens track a real company's price and settle against a vault the

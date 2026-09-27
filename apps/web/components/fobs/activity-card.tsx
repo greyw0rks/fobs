@@ -7,7 +7,7 @@
 import Link from "next/link";
 import type { Route } from "next";
 import type { FeedTrade } from "@/lib/types";
-import { ago, initials, money } from "@/lib/format";
+import { ago, avatarSrc, initials, money } from "@/lib/format";
 
 export function ActivityCard({ trade }: { trade: FeedTrade }) {
   const action = trade.side === "buy" ? "bought" : "sold";
@@ -18,9 +18,14 @@ export function ActivityCard({ trade }: { trade: FeedTrade }) {
         <div className="flex gap-3">
           <Link
             href={`/profile/${trade.user.username}` as Route}
-            className="flex h-8 w-8 items-center justify-center rounded-full bg-[#e5e1d9] text-[10px] font-semibold"
+            className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-[#e5e1d9] text-[10px] font-semibold"
           >
-            {initials(trade.user.displayName)}
+            {avatarSrc(trade.user.avatar) ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={avatarSrc(trade.user.avatar)!} alt="" className="h-full w-full object-cover" />
+            ) : (
+              initials(trade.user.displayName)
+            )}
           </Link>
 
           <div>

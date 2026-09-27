@@ -91,6 +91,20 @@ export async function recordSwapTrade(input: RecordTradeInput): Promise<{ id: st
     select: { id: true }
   });
 
+  // Mirror the position. The indexer used to keep `Holding` in step by reading
+  // the program's Holding PDA back off the chain; a Jupiter swap has no such
+  // account, so — just as this function stands in for the indexer's `Trade`
+  // write — it stands in for its `Holding` write too. Without this the stock
+  // balance every holdings surface reads (the trade panel's "tokens you hold",
+  // the portfolio, the holder counts) never moves off zero after a swap.
+  await applyHoldingDelta({
+    userId: input.userId,
+    assetId,
+    side: input.side,
+    quantity: input.quantity,
+    price: input.price
+  });
+
   const tradeEvent: TradeEvent = {
     type: "trade",
     id: trade.id,
@@ -119,6 +133,67 @@ export async function recordSwapTrade(input: RecordTradeInput): Promise<{ id: st
   });
 
   return { id: trade.id };
+}
+
+/**
+ * Fold one confirmed swap into the `Holding` mirror.
+ *
+ * A buy adds shares and moves the average entry price by volume; a sell removes
+ * shares and leaves the average untouched, because the cost basis of what is
+ * still held has not changed. Quantity is clamped at zero: selling the whole
+ * position lands the row at exactly zero rather than a tiny negative from
+ * rounding, and the readers all treat a zero row as "no position".
+ *
+ * The economics come from the same fee-adjusted quote the `Trade` row was
+ * written from, so the mirror agrees with the trade that produced it.
+ */
+async function applyHoldingDelta(input: {
+  userId: string;
+  assetId: string;
+  side: "buy" | "sell";
+  quantity: number;
+  price: number;
+}): Promise<void> {
+  const existing = await prisma.holding.findUnique({
+    where: { userId_assetId: { userId: input.userId, assetId: input.assetId } },
+    select: { quantity: true, avgPrice: true }
+  });
+
+  const heldQty = existing ? Number(existing.quantity) : 0;
+  const heldAvg = existing ? Number(existing.avgPrice) : 0;
+
+  if (input.side === "buy") {
+    const nextQty = heldQty + input.quantity;
+    // Volume-weighted so the average entry reflects both lots. `nextQty` is
+    // positive here (a buy adds a positive quantity), so this never divides by
+    // zero.
+    const nextAvg = (heldQty * heldAvg + input.quantity * input.price) / nextQty;
+    await prisma.holding.upsert({
+      where: { userId_assetId: { userId: input.userId, assetId: input.assetId } },
+      create: {
+        userId: input.userId,
+        assetId: input.assetId,
+        quantity: nextQty,
+        avgPrice: nextAvg
+      },
+      update: { quantity: nextQty, avgPrice: nextAvg }
+    });
+    return;
+  }
+
+  // A sell of tokens we have no mirror row for (acquired outside FOBS) leaves
+  // nothing to decrement; recording a negative position would be a lie.
+  const nextQty = Math.max(0, heldQty - input.quantity);
+  await prisma.holding.upsert({
+    where: { userId_assetId: { userId: input.userId, assetId: input.assetId } },
+    create: {
+      userId: input.userId,
+      assetId: input.assetId,
+      quantity: nextQty,
+      avgPrice: input.price
+    },
+    update: { quantity: nextQty, avgPrice: heldAvg }
+  });
 }
 
 /** The trade's own owner, everyone following them, and the FOMO'd trader. */

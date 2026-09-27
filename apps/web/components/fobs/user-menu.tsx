@@ -12,9 +12,10 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import type { Route } from "next";
-import { LogOut, Settings, User as UserIcon } from "lucide-react";
+import { Compass, LogOut, Settings, User as UserIcon } from "lucide-react";
 import type { SessionUserView } from "@/lib/types";
-import { initials } from "@/lib/format";
+import { replayWalkthrough } from "./walkthrough";
+import { initials, avatarSrc } from "@/lib/format";
 
 export function UserMenu({
   user,
@@ -57,8 +58,13 @@ export function UserMenu({
             : "flex items-center gap-2 rounded-full transition hover:opacity-80"
         }
       >
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#dceafa] text-xs font-semibold">
-          {initials(user.displayName)}
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#dceafa] text-xs font-semibold">
+          {avatarSrc(user.avatar) ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={avatarSrc(user.avatar)!} alt="" className="h-full w-full object-cover" />
+          ) : (
+            initials(user.displayName)
+          )}
         </div>
 
         {variant === "sidebar" ? (
@@ -95,6 +101,19 @@ export function UserMenu({
             label="Account"
             onNavigate={() => setOpen(false)}
           />
+
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              setOpen(false);
+              replayWalkthrough();
+            }}
+            className="mx-1 flex w-[calc(100%-0.5rem)] items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-[13px] text-[#3a3b36] transition hover:bg-[#f2f1ec]"
+          >
+            <Compass size={15} strokeWidth={1.8} />
+            How fobs works
+          </button>
 
           <div className="my-1 border-t border-[#efeee9]" />
 

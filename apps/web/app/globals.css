@@ -731,6 +731,15 @@ code {
 .avatar[data-hue="3"] { background: var(--avatar-3); }
 .avatar[data-hue="4"] { background: var(--avatar-4); }
 
+/* A real profile picture (X/Google) fills the circle; the initials fallback
+   keeps the hue background behind it. */
+.avatar img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
 /* -- Inputs --------------------------------------------------------------- */
 
 .input {
