@@ -15,10 +15,11 @@ import { money, price, qty } from "@/lib/format";
 export const dynamic = "force-dynamic";
 
 /**
- * Your positions. Everything here mirrors something on chain — quantities and
- * average prices are read from the program's own Holding accounts, wallet
- * figures are read live each request. Where a price has not been read the page
- * says so with "—" rather than showing a number.
+ * Your positions. The headline is total account value — the stock holdings
+ * written in with the wallet's cash balance — and everything below it mirrors
+ * something on chain: quantities and average prices from the mirrored Holding
+ * rows, wallet figures read live each request. Where a price has not been read
+ * the page says so with "—" rather than showing a number.
  */
 export default async function PortfolioPage() {
   const viewer = await currentUser();
@@ -70,14 +71,35 @@ export default async function PortfolioPage() {
   const pnlUp = portfolio.unrealizedPnl !== null && portfolio.unrealizedPnl >= 0;
   const shown = portfolio.holdings.filter((holding) => holding.allocation !== null);
 
+  // The headline is total account value: the stock holdings written in with the
+  // wallet's cash, not the positions alone. `cash` is 0 for a wallet with no
+  // USDC account yet (a known zero) but null when the balance could not be read
+  // at all; `holdingsValue` is a known 0 when there are no positions but null
+  // when positions exist that no price could be read for. The total is only a
+  // number when neither half is unknown — otherwise it would understate.
+  const cash = balances ? (balances.usdcAccountExists ? balances.usdc : 0) : null;
+  const holdingsValue =
+    portfolio.totalValue !== null
+      ? portfolio.totalValue
+      : portfolio.holdings.length === 0
+        ? 0
+        : null;
+  const totalBalance =
+    holdingsValue === null || cash === null ? null : holdingsValue + cash;
+
   return (
     <div className="space-y-5">
       <Reveal>
         <section>
           <p className="text-xs text-[#85867f]">Portfolio</p>
           <h1 className="mt-1 text-[30px] font-semibold tracking-[-0.05em]">
-            {portfolio.totalValue === null ? "—" : money(portfolio.totalValue)}
+            {totalBalance === null ? "—" : money(totalBalance)}
           </h1>
+          {totalBalance !== null ? (
+            <p className="mt-1 text-[11px] text-[#9b9c95]">
+              {money(holdingsValue!)} in stocks · {money(cash!)} cash
+            </p>
+          ) : null}
           {portfolio.unrealizedPnl !== null ? (
             <p
               className={`mt-1 text-xs font-semibold ${
