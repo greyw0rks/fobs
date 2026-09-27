@@ -3,6 +3,7 @@ import type { Route } from "next";
 import { FeedView } from "@/components/FeedView";
 import { PortfolioChart } from "@/components/fobs/portfolio-chart";
 import { FriendsCard } from "@/components/fobs/friends-card";
+import { MarketNewsPanel } from "@/components/fobs/market-news-panel";
 import { FomoCard } from "@/components/fobs/fomo-card";
 import { MarketsRail } from "@/components/fobs/markets-table";
 import { Reveal } from "@/components/fobs/motion";
@@ -190,6 +191,7 @@ export default async function FeedPage({
 
             <div className="space-y-5">
               <FriendsCard people={people} />
+              <MarketNewsPanel />
               <FomoCard trade={featured} />
             </div>
           </section>

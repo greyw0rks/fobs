@@ -1,6 +1,7 @@
 import type {
   AssetSummary,
   FeedTrade,
+  MarketNewsResponse,
   NotificationView,
   ProfileLink,
   ProfileView,
@@ -74,6 +75,9 @@ export const api = {
     ),
 
   assets: () => json<{ assets: AssetSummary[] }>("/api/assets"),
+
+  /** Recent market news for the homepage panel, each story with its ticker's move. */
+  marketNews: () => json<MarketNewsResponse>("/api/market-news"),
 
   notifications: () =>
     json<{ notifications: NotificationView[]; unread: number }>("/api/notifications"),
@@ -205,6 +209,8 @@ export const api = {
     amountUsdc: number;
     quantity: number;
     price: number;
+    /** From `prepareTrade` — lets the server confirm against a real deadline. */
+    lastValidBlockHeight?: number | null;
     sourceTradeId?: string | null;
   }) =>
     json<{ trade: FeedTrade; signature: string }>("/api/trades/submit", {

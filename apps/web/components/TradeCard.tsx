@@ -181,6 +181,17 @@ export function TradeConfirmation({
           on mainnet
         </p>
       ) : null}
+
+      {/* The shareable FOMO card. The receipt proves the trade happened; this is
+          the thing worth posting — a dark editorial card built to leave the app
+          and still read as fobs, and the entry point for anyone to FOMO it. */}
+      <Link
+        className="button fomo"
+        href={`/share/${trade.id}`}
+        style={{ marginTop: "var(--s-3)" }}
+      >
+        Share this trade →
+      </Link>
     </div>
   );
 }

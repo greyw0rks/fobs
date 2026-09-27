@@ -95,6 +95,10 @@ export async function signAndSubmitTrade(
         amountUsdc,
         quantity,
         price,
+        // The deadline the swap was built against. With it the server confirms
+        // against the block height the blockhash dies at, so a timeout means
+        // "expired, safe to re-sign" instead of "maybe landed."
+        lastValidBlockHeight: prepared.lastValidBlockHeight,
         sourceTradeId: body.sourceTradeId ?? null
       });
       return result.trade;

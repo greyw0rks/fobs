@@ -4,7 +4,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { usdcMint, DECIMALS } from "@/lib/solana/config";
 import { tradeableFor, type Tradeable } from "@/lib/server/tradeable";
-import { buildSwapTransaction, quoteSwap } from "@/lib/server/quote";
+import { buildSwapTransaction, quoteSwap, defaultSlippageBps } from "@/lib/server/quote";
 import { checkDeviation, impliedPrice } from "@/lib/server/deviation";
 import { referencePrice } from "@/lib/server/pyth-reference";
 import { fetchPreStock } from "@/lib/server/prestocks";
@@ -117,7 +117,15 @@ export async function POST(request: Request) {
       }
     }
 
-    const quote = await quoteSwap({ inputMint, outputMint, amount, policy: asset.policy });
+    const quote = await quoteSwap({
+      inputMint,
+      outputMint,
+      amount,
+      policy: asset.policy,
+      // Illiquid names (Ondo, PreStocks) get a wider bound so an ordinary fill
+      // is not rejected on a small move; `dynamicSlippage` on `/swap` refines it.
+      slippageBps: defaultSlippageBps(asset.kind)
+    });
 
     // The Pyth guard, carried into execution. For a listed equity the venue's
     // implied price is checked against the reference and a dislocated route is

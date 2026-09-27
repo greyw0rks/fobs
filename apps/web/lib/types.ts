@@ -178,6 +178,33 @@ export type HoldingView = {
   unrealizedPct: number | null;
 };
 
+/**
+ * One market-news story, normalized for the homepage panel.
+ *
+ * `price` and `changePercent` are the *ticker's* live figures, attached so a
+ * headline reads next to the move it is about. Both are nullable for the same
+ * reason every price in this app is: a number we could not read is shown as an
+ * em dash, never invented. `publishedAt` is ISO (see the file header) and `url`
+ * points at the source story, opened in a new tab.
+ */
+export type MarketNews = {
+  id: string;
+  ticker: string;
+  company: string;
+  headline: string;
+  source: string;
+  publishedAt: string;
+  price: number | null;
+  changePercent: number | null;
+  url: string;
+};
+
+/** The `/api/market-news` payload: when it was assembled, and the stories. */
+export type MarketNewsResponse = {
+  updatedAt: string;
+  news: MarketNews[];
+};
+
 export type PortfolioView = {
   holdings: HoldingView[];
   /** Sum over holdings whose price is known. Null if none is. */

@@ -132,12 +132,15 @@ export function enforce(
  * `trade` is the loosest of the writes because a trade costs a devnet round trip
  * and a person clicking buy across five assets is normal use, not abuse. `follow`
  * is tighter because it is cheap and toggled rapidly by hand. `dev` is tightest:
- * it mints sessions.
+ * it mints sessions. `news` is a read, but it drives an upstream fetch to Yahoo,
+ * so it is bounded generously — one panel polling every 60s is well under it,
+ * while a loop that ignores the cache still cannot hammer the vendor through us.
  */
 export const RULES = {
   trade: { capacity: 10, refillPerSecond: 0.1 },
   fomo: { capacity: 10, refillPerSecond: 0.1 },
   follow: { capacity: 20, refillPerSecond: 0.5 },
   dev: { capacity: 5, refillPerSecond: 0.05 },
-  onboarding: { capacity: 3, refillPerSecond: 0.02 }
+  onboarding: { capacity: 3, refillPerSecond: 0.02 },
+  news: { capacity: 30, refillPerSecond: 0.5 }
 } as const satisfies Record<string, RateLimitRule>;

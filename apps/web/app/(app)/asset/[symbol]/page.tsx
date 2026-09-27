@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { Route } from "next";
 import { notFound } from "next/navigation";
 import { Avatar, FeedCard, TradePanel } from "@/components/TradeCard";
-import { PortfolioChart } from "@/components/fobs/portfolio-chart";
+import { PriceChart } from "@/components/fobs/price-chart";
 import { Reveal, Stagger, StaggerItem } from "@/components/fobs/motion";
 import {
   countHolders,
@@ -60,20 +60,10 @@ export default async function AssetPage({
 
   const oracle = asset.priceFeedType === "pyth" ? "Pyth reference" : "Live price";
 
-  // The real market series, mapped for the chart. Change is close-to-close over
-  // the window — real, or null when there aren't two points.
-  const series = history.map((point) => ({
-    label: new Date(point.at).toLocaleDateString(undefined, {
-      month: "short",
-      day: "numeric"
-    }),
-    value: point.price
-  }));
-  const seriesChange =
-    series.length >= 2 && series[0].value > 0
-      ? ((series[series.length - 1].value - series[0].value) / series[0].value) *
-        100
-      : null;
+  // The real market series is the ~1-year daily close from `priceHistory`; the
+  // PriceChart slices it to the selected timeframe. Two points is the floor for
+  // a line — below that (freshly bridged or pre-IPO) the placeholder shows.
+  const hasHistory = history.length >= 2;
 
   return (
     <div className="space-y-5">
@@ -123,12 +113,11 @@ export default async function AssetPage({
           </Reveal>
 
           <Reveal delay={0.05}>
-            {series.length >= 2 ? (
-              <PortfolioChart
-                series={series}
-                totalValue={asset.priceKnown ? asset.price : null}
-                change={seriesChange}
-                title={`${ticker} · ${series.length}-day daily close`}
+            {hasHistory ? (
+              <PriceChart
+                points={history}
+                currentPrice={asset.priceKnown ? asset.price : null}
+                title={`${ticker} · daily close`}
               />
             ) : (
               <div className="fobs-surface p-6">

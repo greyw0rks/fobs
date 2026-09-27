@@ -27,6 +27,8 @@ const SubmitBody = z.object({
   quantity: z.number().positive(),
   /** USD per token. */
   price: z.number().positive(),
+  /** From `/prepare`: the block height the swap's blockhash dies at. */
+  lastValidBlockHeight: z.number().int().positive().nullish(),
   sourceTradeId: z.string().min(1).nullish()
 });
 
@@ -101,6 +103,53 @@ export async function POST(request: Request) {
     );
   }
 
+  // Resolved here, not trusted from the body, so a client cannot record a
+  // different asset than the mint it actually swapped. Resolved *before* sending
+  // so the same row is used for the duplicate guard below and the record after.
+  const asset = await tradeableFor(parsed.data.symbol);
+
+  // --- The double-execution guard --------------------------------------------
+  // A confirmation false-negative (the swap landed, but confirming it timed out)
+  // makes the client re-prepare and re-sign — a *new* signature for the same
+  // intent, which the signature-keyed idempotency in `recordSwapTrade` cannot
+  // catch. So before sending a second real swap, refuse one that matches a trade
+  // this account already landed moments ago: same wallet, same mint, same side,
+  // same size within a small tolerance. A trade row exists only once a prior
+  // swap confirmed, so this never blocks a genuine first attempt or a retry of
+  // one that failed — only a duplicate of one that actually went through.
+  const DEDUPE_WINDOW_MS = Number(process.env.TRADE_DEDUPE_WINDOW_MS ?? 45_000);
+  const existingAsset = await prisma.asset.findUnique({
+    where: { mintAddress: asset.mint },
+    select: { id: true }
+  });
+  if (existingAsset) {
+    const recent = await prisma.trade.findFirst({
+      where: {
+        userId: viewer.id,
+        assetId: existingAsset.id,
+        side: parsed.data.side,
+        tradedAt: { gte: new Date(Date.now() - DEDUPE_WINDOW_MS) }
+      },
+      orderBy: { tradedAt: "desc" },
+      select: { id: true, amountUsdc: true }
+    });
+    const priorUsd = recent ? Number(recent.amountUsdc) : 0;
+    const withinTolerance =
+      priorUsd > 0 &&
+      Math.abs(priorUsd - parsed.data.amountUsdc) <= priorUsd * 0.02;
+    if (recent && withinTolerance) {
+      return NextResponse.json(
+        {
+          error:
+            "A matching trade just went through moments ago. Check your portfolio before trading again — this one was not sent to avoid a duplicate.",
+          code: "duplicate_recent",
+          tradeId: recent.id
+        },
+        { status: 409 }
+      );
+    }
+  }
+
   const conn = connection();
 
   let signature: string;
@@ -127,19 +176,60 @@ export async function POST(request: Request) {
   }
 
   try {
-    const confirmation = await conn.confirmTransaction(signature, "confirmed");
-    if (confirmation.value.err) {
+    // Confirm against the block height the swap's blockhash dies at, not the
+    // deprecated single-arg form whose timeout could not tell "expired" from
+    // "still pending." A timeout here (TransactionExpiredBlockheightExceeded)
+    // means the blockhash is dead, so a re-sign is safe — but the swap could
+    // have landed just before expiry, so a definitive on-chain status check
+    // stands between a timeout and telling the client to sign again.
+    const blockhash = transaction.message.recentBlockhash;
+    const lastValidBlockHeight = parsed.data.lastValidBlockHeight ?? null;
+
+    let landedErr: unknown = null;
+    let onChain = false;
+    try {
+      const confirmation =
+        lastValidBlockHeight !== null
+          ? await conn.confirmTransaction(
+              { signature, blockhash, lastValidBlockHeight },
+              "confirmed"
+            )
+          : await conn.confirmTransaction(signature, "confirmed");
+      onChain = true;
+      landedErr = confirmation.value.err;
+    } catch {
+      // Not proof of failure. Ask the chain directly whether it landed.
+      const status = await conn.getSignatureStatus(signature, {
+        searchTransactionHistory: true
+      });
+      const value = status.value;
+      const settled =
+        value?.confirmationStatus === "confirmed" ||
+        value?.confirmationStatus === "finalized";
+      if (value && settled) {
+        onChain = true;
+        landedErr = value.err;
+      }
+    }
+
+    if (!onChain) {
+      // Genuinely not on chain and the blockhash is dead — safe to re-sign.
       return NextResponse.json(
         {
-          error: `Swap ${signature} failed on chain: ${JSON.stringify(confirmation.value.err)}`
+          error: "The transaction expired before it landed. Sign it again.",
+          code: "blockhash_stale"
+        },
+        { status: 409 }
+      );
+    }
+    if (landedErr) {
+      return NextResponse.json(
+        {
+          error: `Swap ${signature} failed on chain: ${JSON.stringify(landedErr)}`
         },
         { status: 400 }
       );
     }
-
-    // Resolved here, not trusted from the body, so a client cannot record a
-    // different asset than the mint it actually swapped.
-    const asset = await tradeableFor(parsed.data.symbol);
 
     const actor = await prisma.user.findUniqueOrThrow({
       where: { id: viewer.id },

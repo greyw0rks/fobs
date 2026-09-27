@@ -55,8 +55,9 @@ const USER_AGENT =
 const TIMEOUT_MS = 8_000;
 const REVALIDATE_SECONDS = 300;
 
-/** How many daily points to ask for — roughly a trading month. */
-const OUTPUT_SIZE = 40;
+/** How many daily points to ask for — about a year of trading days, so the
+ * per-stock chart's timeframe buttons (1W…1Y) all have data to slice from. */
+const OUTPUT_SIZE = 365;
 
 export async function priceHistory(ticker: string): Promise<PricePoint[]> {
   const keyed = await fromTwelveData(ticker);
@@ -119,7 +120,7 @@ const YAHOO_HOSTS = [
 async function fromYahoo(ticker: string): Promise<PricePoint[]> {
   for (const host of YAHOO_HOSTS) {
     try {
-      const url = `${host}${encodeURIComponent(ticker)}?interval=1d&range=1mo`;
+      const url = `${host}${encodeURIComponent(ticker)}?interval=1d&range=1y`;
       const response = await fetch(url, {
         headers: { "user-agent": USER_AGENT, accept: "application/json" },
         next: { revalidate: REVALIDATE_SECONDS },

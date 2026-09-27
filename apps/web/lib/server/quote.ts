@@ -301,6 +301,33 @@ export async function quoteSwap(params: {
 
 const SWAP_URL = process.env.JUPITER_SWAP_URL ?? QUOTE_URL.replace(/\/quote$/, "/swap");
 
+/**
+ * Priority-fee ceiling and level for the swap, both env-overridable.
+ *
+ * `PRIORITY_LEVEL` is the percentile band Jupiter prices the fee from; "high" is
+ * a sensible default for a trade a human is waiting on. `PRIORITY_MAX_LAMPORTS`
+ * is the hard cap so a congestion spike can raise the fee but never past a
+ * bound the wallet agreed to — 0.002 SOL by default.
+ */
+const PRIORITY_LEVEL = process.env.TRADE_PRIORITY_LEVEL ?? "high";
+const PRIORITY_MAX_LAMPORTS = Number(process.env.TRADE_PRIORITY_MAX_LAMPORTS ?? 2_000_000);
+
+/**
+ * The slippage bound for a name, in bps, from its liquidity — env-overridable.
+ *
+ * A Backed xStock sits in a deep pool that tracks Pyth within tens of bps, so a
+ * tight 1% bound is safe and protective. Ondo's Solana equity pools and the
+ * PreStocks Token-2022 mints are thin enough that 1% rejects an ordinary fill on
+ * a small market move; they get a wider default. `dynamicSlippage` on `/swap`
+ * refines this per route at execution, but the quote still needs an honest
+ * ceiling to compute its minimum-out against.
+ */
+export function defaultSlippageBps(kind: "xstock" | "ondo" | "prestock"): number {
+  const liquid = Number(process.env.TRADE_SLIPPAGE_BPS ?? 100);
+  const illiquid = Number(process.env.TRADE_SLIPPAGE_BPS_ILLIQUID ?? 300);
+  return kind === "xstock" ? liquid : illiquid;
+}
+
 /** A swap builds a transaction, which is heavier than a quote — give it longer. */
 const SWAP_TIMEOUT_MS = 15_000;
 
@@ -351,9 +378,36 @@ export async function buildSwapTransaction(params: {
         quoteResponse: params.quote.jupiterQuote,
         userPublicKey: params.userPublicKey,
         wrapAndUnwrapSol: params.wrapAndUnwrapSol ?? true,
-        // The token accounts a swap touches may not exist yet; let Jupiter add
-        // the create instructions rather than failing on a missing ATA.
-        dynamicComputeUnitLimit: true
+        // Compute-unit limit: left at Jupiter's default ceiling (1,400,000 CU)
+        // rather than `dynamicComputeUnitLimit: true`. That flag makes Jupiter
+        // set a *tight* limit from an estimating simulation — and for these
+        // Token-2022 tokenized stocks, whose transfer hook/fee runs on every leg
+        // and costs more at real execution than the estimate sees, the tight
+        // limit is blown on chain: "Computational budget exceeded", the exact
+        // failure this removes. The full ceiling is a limit no swap actually
+        // reaches, and the priority fee it is multiplied against is still bounded
+        // by `maxLamports` below, so the headroom's only cost is a capped fee
+        // while the failure mode is gone. (ATA creation is unrelated and stays on
+        // by default, so a swap still creates any token account it touches.)
+        //
+        // Let Jupiter size slippage from the live route rather than the fixed
+        // bound baked into the quote — it widens for a thin pool and tightens
+        // for a deep one, which is exactly what a fixed number cannot do and the
+        // reason an illiquid name failed preflight on a market blip.
+        dynamicSlippage: true,
+        // A priority fee is the single biggest lever on whether a swap lands
+        // inside the blockhash's ~60–90s life. A zero-fee transaction is
+        // deprioritised under any congestion, expires, and the user re-signs
+        // until they hit a quiet slot. Jupiter prices the fee from recent
+        // percentiles at the chosen level, capped so a congestion spike cannot
+        // drain the wallet's SOL.
+        prioritizationFeeLamports: {
+          priorityLevelWithMaxLamports: {
+            maxLamports: PRIORITY_MAX_LAMPORTS,
+            priorityLevel: PRIORITY_LEVEL,
+            global: false
+          }
+        }
       })
     });
     if (!response.ok) throw new SwapBuildError(`jupiter /swap returned ${response.status}`);

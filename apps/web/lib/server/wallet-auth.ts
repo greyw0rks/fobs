@@ -57,7 +57,7 @@ export type NoncePurpose = "sign-in" | "link";
  * actually reads before pressing approve.
  */
 function buildMessage(input: {
-  domain: string;
+  origin: string;
   address: string;
   nonce: string;
   issuedAt: Date;
@@ -68,13 +68,23 @@ function buildMessage(input: {
       ? "Link this wallet to your existing FOBS account."
       : "Sign in to FOBS. This signature proves you control this wallet. It does not authorise any transaction.";
 
+  // Phantom (and other wallets) auto-detect a Sign In With Solana message by its
+  // shape and parse it against the SIWS grammar; a message that is *almost* SIWS
+  // but not conformant is rejected with "cannot be shown due to invalid
+  // formatting" rather than shown. Two rules the grammar is strict about:
+  //   - the first line carries the bare authority (host[:port]), not the scheme —
+  //     the scheme lives only on the `URI:` line;
+  //   - the nonce is alphanumeric (`8*( ALPHA / DIGIT )`), which is why it is
+  //     issued as hex, not base64url (whose `-`/`_` break the parse).
+  const authority = new URL(input.origin).host;
+
   return [
-    `${input.domain} wants you to sign in with your Solana account:`,
+    `${authority} wants you to sign in with your Solana account:`,
     input.address,
     "",
     statement,
     "",
-    `URI: ${input.domain}`,
+    `URI: ${input.origin}`,
     "Version: 1",
     `Chain ID: solana:mainnet`,
     `Nonce: ${input.nonce}`,
@@ -97,12 +107,14 @@ export async function issueChallenge(input: {
   domain: string;
 }): Promise<{ nonce: string; message: string; expiresAt: Date }> {
   const address = normaliseAddress(input.address);
-  const nonce = randomBytes(24).toString("base64url");
+  // Hex, not base64url: the SIWS nonce grammar is alphanumeric-only, and
+  // base64url's `-`/`_` make Phantom reject the whole message as malformed.
+  const nonce = randomBytes(24).toString("hex");
   const issuedAt = new Date();
   const expiresAt = new Date(issuedAt.getTime() + NONCE_TTL_MS);
 
   const message = buildMessage({
-    domain: input.domain,
+    origin: input.domain,
     address,
     nonce,
     issuedAt,
